@@ -1,6 +1,8 @@
 # zfs-inplace-rebalancing
 Simple bash script to rebalance pool data between all mirrors when adding vdevs to a pool.
 
+[![asciicast](https://asciinema.org/a/350221.svg)](https://asciinema.org/a/350221)
+
 ## How it works
 
 This script simply copies all files, deletes the original and renames the copy back to the original name. The given root directory is traversed recursively (using `find`) and each file is processed individually. At no point in time are both versions of the original file deleted.
