@@ -5,15 +5,15 @@ set -e
 # exit on undeclared variable
 set -u
 
+shopt -s nocasematch
+
 function rebalance () {
     file_path=$1
 
     tmp_extension=".balance"
 
-    echo "${file_path}"
     echo "Copying '${file_path}' to '${file_path}${tmp_extension}'..."
-
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
         # Linux
 
         # -a -- keep attributes
@@ -21,7 +21,7 @@ function rebalance () {
         # -x -- stay on one system
         # -p -- preserve ACLs too
         cp -adxp "${file_path}" "${file_path}${tmp_extension}"
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
+    elif [[ "${OSTYPE,,}" == "darwin"* ]]; then
         # Mac OSX
 
         # (should be the same as bsd, but untested!)
@@ -31,7 +31,7 @@ function rebalance () {
         # -x -- stay on one system
         # -p -- preserve ACLs too
         cp -adxp "${file_path}" "${file_path}${tmp_extension}"
-    elif [[ "$OSTYPE" == "freebsd"* ]]; then
+    elif [[ "${OSTYPE,,}" == "freebsd"* ]]; then
         # FreeBSD
 
         # -a -- Archive mode.  Same as -RpP.
