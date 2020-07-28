@@ -5,8 +5,6 @@ set -e
 # exit on undeclared variable
 set -u
 
-shopt -s nocasematch
-
 function rebalance () {
     file_path=$1
 
