@@ -5,6 +5,7 @@ set -e
 # exit on undeclared variable
 set -u
 
+# index used for progress
 current_index=0
 
 ## Color Constants
@@ -22,12 +23,16 @@ Purple='\033[0;35m'       # Purple
 Cyan='\033[0;36m'         # Cyan
 White='\033[0;37m'        # White
 
+## Functions
+
+# print a given text entirely in a given color
 function color_echo () {
     color=$1
     text=$2
     echo -e "${color}${text}${Color_Off}"
 }
 
+# rebalance a specific file
 function rebalance () {
     file_path=$1
 
