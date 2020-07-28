@@ -28,4 +28,6 @@ function rebalance () {
 root_path=$1
 # recursively scan through files and execute "rebalance" procedure
 find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
-echo Done!
+echo ""
+echo ""
+echo "Done!"
