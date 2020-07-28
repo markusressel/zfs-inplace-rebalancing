@@ -5,8 +5,14 @@ set -e
 # exit on undeclared variable
 set -u
 
+current_index=0
+
 function rebalance () {
     file_path=$1
+
+    current_index="$((current_index + 1))"
+    progress_percent=$(echo "scale=2; $current_index*100/$file_count" | bc)
+    echo "Progress -- Files: $current_index/$file_count ($progress_percent%)"
 
     tmp_extension=".balance"
 
@@ -51,6 +57,11 @@ function rebalance () {
 }
 
 root_path=$1
+
+# count files
+file_count=$(find "$root_path" -type f | wc -l)
+echo "Files to rebalance: $file_count"
+
 # recursively scan through files and execute "rebalance" procedure
 find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
 echo ""
