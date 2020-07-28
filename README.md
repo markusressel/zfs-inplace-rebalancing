@@ -28,8 +28,8 @@ Due to the working principle of this script, it is crucial that you **only run i
 **ALWAYS HAVE A BACKUP OF YOUR DATA!**
 
 ```
-chmod +x ./zfs-in-place-mirror-rebalance.sh
-./zfs-in-place-mirror-rebalance.sh /pool/path/to/rebalance
+chmod +x ./zfs-inplace-rebalancing.sh
+./zfs-inplace-rebalancing.sh /pool/path/to/rebalance
 ```
 
 Note that this script does **not** have any kind of progress bar (yet), so it might be a good idea to try a small subfolder first, or process your pool folder layout in manually selected badges.
