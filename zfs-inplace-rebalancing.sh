@@ -7,13 +7,34 @@ set -u
 
 current_index=0
 
+## Color Constants
+
+# Reset
+Color_Off='\033[0m'       # Text Reset
+
+# Regular Colors
+Black='\033[0;30m'        # Black
+Red='\033[0;31m'          # Red
+Green='\033[0;32m'        # Green
+Yellow='\033[0;33m'       # Yellow
+Blue='\033[0;34m'         # Blue
+Purple='\033[0;35m'       # Purple
+Cyan='\033[0;36m'         # Cyan
+White='\033[0;37m'        # White
+
+function color_print () {
+    color=$1
+    text=$2
+    echo -e "${color}${text}${Color_Off}"
+}
+
 function rebalance () {
     file_path=$1
 
     current_index="$((current_index + 1))"
-    progress_percent=$(echo "scale=2; $current_index*100/$file_count" | bc)
-    echo "Progress -- Files: $current_index/$file_count ($progress_percent%)"
-
+    progress_percent=$(echo "scale=2; ${current_index}*100/${file_count}" | bc)
+    color_print "$Green" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
+   
     tmp_extension=".balance"
 
     echo "Copying '${file_path}' to '${file_path}${tmp_extension}'..."
