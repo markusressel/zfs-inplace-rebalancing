@@ -5,7 +5,7 @@ Simple bash script to rebalance pool data between all mirrors when adding vdevs 
 
 ## How it works
 
-This script simply copies all files, deletes the original and renames the copy back to the original name. The given root directory is traversed recursively (using `find`) and each file is processed individually. At no point in time are both versions of the original file deleted.
+This script traverses the given directory recursively (using `find`), looking for *files*. Each file is copied (including a `.rebalance` suffix), retaining all file attributes, the original is deleted and the copy is renamed back to the name of the original file. ZFS will spread data blocks of new files (*the copy* in this case) across all vdevs, effectively distributing/rebalancing the data (more or less) evenly. This allows the pool data to be rebalanced without the need for a separate backup pool/drive.
 
 ## Prerequisites
 
