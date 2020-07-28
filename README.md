@@ -32,7 +32,7 @@ chmod +x ./zfs-inplace-rebalancing.sh
 ./zfs-inplace-rebalancing.sh /pool/path/to/rebalance
 ```
 
-Note that this script does **not** have any kind of progress bar (yet), so it might be a good idea to try a small subfolder first, or process your pool folder layout in manually selected badges.
+Although this script **does** have a progress output (files as well as percentage) it might be a good idea to try a small subfolder first, or process your pool folder layout in manually selected badges. This can also limit the damage done, if anything bad happens.
 
 When aborting the script midway through, be sure to check the last lines of its output. When cancelling before or during the renaming process a ".rebalance" file might be left and you have to rename it manually.
 
