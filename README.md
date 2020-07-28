@@ -1,7 +1,7 @@
 # zfs-inplace-rebalancing
 Simple bash script to rebalance pool data between all mirrors when adding vdevs to a pool.
 
-[![asciicast](https://asciinema.org/a/350221.svg)](https://asciinema.org/a/350221)
+[![asciicast](https://asciinema.org/a/350222.svg)](https://asciinema.org/a/350222)
 
 ## How it works
 
