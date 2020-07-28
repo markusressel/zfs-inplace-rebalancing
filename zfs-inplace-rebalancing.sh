@@ -22,7 +22,7 @@ Purple='\033[0;35m'       # Purple
 Cyan='\033[0;36m'         # Cyan
 White='\033[0;37m'        # White
 
-function color_print () {
+function color_echo () {
     color=$1
     text=$2
     echo -e "${color}${text}${Color_Off}"
@@ -33,7 +33,7 @@ function rebalance () {
 
     current_index="$((current_index + 1))"
     progress_percent=$(echo "scale=2; ${current_index}*100/${file_count}" | bc)
-    color_print "$Green" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
+    color_echo "$Green" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
    
     tmp_extension=".balance"
 
@@ -87,4 +87,4 @@ echo "Files to rebalance: $file_count"
 find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
 echo ""
 echo ""
-echo "Done!"
+color_echo "$Green" "Done!"
