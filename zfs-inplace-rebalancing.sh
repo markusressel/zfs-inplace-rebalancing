@@ -5,6 +5,9 @@ set -e
 # exit on undeclared variable
 set -u
 
+# file used to track processed files
+rebalance_db_file_name="rebalance_db.txt"
+
 # index used for progress
 current_index=0
 
@@ -118,6 +121,20 @@ function rebalance () {
 
     echo "Renaming temporary copy to original '${file_path}'..."
     mv "${tmp_file_path}" "${file_path}"
+
+    # update rebalance "database"
+    touch "./${rebalance_db_file_name}"
+    line_nr=$(grep -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
+    if [ -z ${line_nr} ]; then
+      rebalance_count=1
+      echo "${file_path}" >> "./${rebalance_db_file_name}"
+      echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
+    else
+      rebalance_count_line_nr="$((line_nr + 1))"
+      rebalance_count=$(awk "NR == ${rebalance_count_line_nr}" "./${rebalance_db_file_name}")
+      rebalance_count="$((rebalance_count + 1))"
+      sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
+    fi
 }
 
 root_path=$1
