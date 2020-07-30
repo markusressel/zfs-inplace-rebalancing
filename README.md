@@ -58,7 +58,7 @@ chmod +x ./zfs-inplace-rebalancing.sh
 | Name      | Description | Default |
 |-----------|-------------|---------|
 | -checksum | Whether to compare the copy using an **MD5** checksum | `true` |
-| -passes   | The maximum number of rebalance passes per file | `1` |
+| -passes   | The maximum number of rebalance passes per file. Setting this to infinity by using a value `<= 0` might improve performance when rebalancing a lot of small files. | `1` |
 
 ### Example
 

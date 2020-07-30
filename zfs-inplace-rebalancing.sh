@@ -60,11 +60,13 @@ function rebalance () {
     progress_percent=$(echo "scale=2; ${current_index}*100/${file_count}" | bc)
     color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
 
-    # check if target rebalance count is reached
-    rebalance_count=$(get_rebalance_count "${file_path}")
-    if [ "${rebalance_count}" -ge "${passes_flag}" ]; then
-      color_echo "${Yellow}" "Rebalance count (${passes_flag}) reached, skipping: ${file_path}"
-      return
+    if [ "${passes_flag}" -ge 1 ]; then
+        # check if target rebalance count is reached
+        rebalance_count=$(get_rebalance_count "${file_path}")
+        if [ "${rebalance_count}" -ge "${passes_flag}" ]; then
+        color_echo "${Yellow}" "Rebalance count (${passes_flag}) reached, skipping: ${file_path}"
+        return
+        fi
     fi
    
     tmp_extension=".balance"
@@ -149,16 +151,18 @@ function rebalance () {
     echo "Renaming temporary copy to original '${file_path}'..."
     mv "${tmp_file_path}" "${file_path}"
 
-    # update rebalance "database"
-    line_nr=$(grep -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
-    if [ -z "${line_nr}" ]; then
-      rebalance_count=1
-      echo "${file_path}" >> "./${rebalance_db_file_name}"
-      echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
-    else
-      rebalance_count_line_nr="$((line_nr + 1))"
-      rebalance_count="$((rebalance_count + 1))"
-      sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
+    if [ "${passes_flag}" -ge 1 ]; then
+        # update rebalance "database"
+        line_nr=$(grep -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
+        if [ -z "${line_nr}" ]; then
+        rebalance_count=1
+        echo "${file_path}" >> "./${rebalance_db_file_name}"
+        echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
+        else
+        rebalance_count_line_nr="$((line_nr + 1))"
+        rebalance_count="$((rebalance_count + 1))"
+        sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
+        fi
     fi
 }
 
@@ -202,7 +206,9 @@ file_count=$(find "${root_path}" -type f | wc -l)
 color_echo "$Cyan" "  File count: ${file_count}"
 
 # create db file
-touch "./${rebalance_db_file_name}"
+if [ "${passes_flag}" -ge 1 ]; then
+    touch "./${rebalance_db_file_name}"
+fi
 
 # recursively scan through files and execute "rebalance" procedure
 find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
