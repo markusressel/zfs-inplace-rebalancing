@@ -106,7 +106,7 @@ function rebalance () {
         exit 1
     fi
 
-    if [[ "${original_md5,,}" == "${copy_md5,,}"* ]]; then
+    if [[ "${original_md5}" == "${copy_md5}"* ]]; then
         color_echo "${Green}" "MD5 OK"
     else
         color_echo "${Red}" "MD5 FAILED: ${original_md5} != ${copy_md5}"
