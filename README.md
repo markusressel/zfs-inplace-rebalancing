@@ -12,7 +12,7 @@ Note that this process is not entirely "in-place", since a file has to be fully 
 At no point in time are both versions of the original file deleted.
 To make sure file attributes, permissions and file content are maintained when copying the original file, all attributes and the file checksum is compared before removing the original file.
 
-Since file attributes are fully retained, it is not possible to verify if an individual file has been rebalanced. However, this script keeps track of rebalanced files by maintaining a "database" file called `rebalance_db.txt` in its working directory. This file contains two lines of text for each processed file:
+Since file attributes are fully retained, it is not possible to verify if an individual file has been rebalanced. However, this script keeps track of rebalanced files by maintaining a "database" file called `rebalance_db.txt` in its working directory (if not disabled using `-passes 0`). This file contains two lines of text for each processed file:
 
 * One line for the file path
 * and the next line for the current count of rebalances
