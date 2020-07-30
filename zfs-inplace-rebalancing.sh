@@ -70,16 +70,16 @@ function rebalance () {
         # Linux
 
         # file attributes
-        original_md5=$(lsattr "${file_path}" | awk '{print $1}' | md5sum -b | awk '{print $1}')
+        original_md5=$(lsattr "${file_path}" | awk '{print $1}')
         # file permissions, owner, group
-        original_md5="${original_md5} $(ls -lha "${file_path}" | awk '{print $1 " " $3 " " $4}' | md5sum -b | awk '{print $1}')"
+        original_md5="${original_md5} $(ls -lha "${file_path}" | awk '{print $1 " " $3 " " $4}')"
         # file content
         original_md5="${original_md5} $(md5sum -b "${file_path}" | awk '{print $1}')"
 
         # file attributes
-        copy_md5=$(lsattr "${tmp_file_path}" | awk '{print $1}' | md5sum -b | awk '{print $1}')
+        copy_md5=$(lsattr "${tmp_file_path}" | awk '{print $1}')
         # file permissions, owner, group
-        copy_md5="${copy_md5} $(ls -lha "${tmp_file_path}" | awk '{print $1 " " $3 " " $4}' | md5sum -b | awk '{print $1}')"
+        copy_md5="${copy_md5} $(ls -lha "${tmp_file_path}" | awk '{print $1 " " $3 " " $4}')"
         # file content
         copy_md5="${copy_md5} $(md5sum -b "${tmp_file_path}" | awk '{print $1}')"
 
@@ -88,16 +88,16 @@ function rebalance () {
         # FreeBSD
 
         # file attributes
-        original_md5=$(lsattr "${file_path}" | awk '{print $1}' | md5 -q)
+        original_md5=$(lsattr "${file_path}" | awk '{print $1}')
         # file permissions, owner, group
-        original_md5="${original_md5} $(ls -lha "${file_path}" | awk '{print $1 " " $3 " " $4}' | md5 -q)"
+        original_md5="${original_md5} $(ls -lha "${file_path}" | awk '{print $1 " " $3 " " $4}')"
         # file content
         original_md5="${original_md5} $(md5 -q "${file_path}")"
 
         # file attributes
-        copy_md5=$(lsattr "${tmp_file_path}" | awk '{print $1}' | md5 -q)
+        copy_md5=$(lsattr "${tmp_file_path}" | awk '{print $1}')
         # file permissions, owner, group
-        copy_md5="${copy_md5} $(ls -lha "${tmp_file_path}" | awk '{print $1 " " $3 " " $4}' | md5 -q)"
+        copy_md5="${copy_md5} $(ls -lha "${tmp_file_path}" | awk '{print $1 " " $3 " " $4}')"
         # file content
         copy_md5="${copy_md5} $(md5 -q "${tmp_file_path}")"
 
