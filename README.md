@@ -65,8 +65,8 @@ You can print a help message by running the script without any parameters:
 
 | Name      | Description | Default |
 |-----------|-------------|---------|
-| `-c` | `--checksum` | Whether to compare attributes and content of the copied file using an **MD5** checksum. Technically this is a redundent check and consumes a lot of resources, so think twice. | `true` |
-| `-p` | `--passes`   | The maximum number of rebalance passes per file. Setting this to infinity by using a value `<= 0` might improve performance when rebalancing a lot of small files. | `1` |
+| `-c` or `--checksum` | Whether to compare attributes and content of the copied file using an **MD5** checksum. Technically this is a redundent check and consumes a lot of resources, so think twice. | `true` |
+| `-p` or `--passes`   | The maximum number of rebalance passes per file. Setting this to infinity by using a value `<= 0` might improve performance when rebalancing a lot of small files. | `1` |
 
 ### Example
 
