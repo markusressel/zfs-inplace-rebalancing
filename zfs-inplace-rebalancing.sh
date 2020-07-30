@@ -125,7 +125,7 @@ function rebalance () {
     # update rebalance "database"
     touch "./${rebalance_db_file_name}"
     line_nr=$(grep -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
-    if [ -z ${line_nr} ]; then
+    if [ -z "${line_nr}" ]; then
       rebalance_count=1
       echo "${file_path}" >> "./${rebalance_db_file_name}"
       echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
