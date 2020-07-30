@@ -176,7 +176,7 @@ fi
 
 while true ; do
     case "$1" in
-        -checksum )
+        -c | --checksum )
             if [ "$2" -eq 1 ] || [[ "$2" =~ (on|true|yes) ]]; then
                 checksum_flag="true"
             else
@@ -184,7 +184,7 @@ while true ; do
             fi
             shift 2
         ;;
-        -count )
+        -p | --passes )
             passes_flag=$2
             shift 2
         ;;
