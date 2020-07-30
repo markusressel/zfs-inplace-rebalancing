@@ -71,7 +71,7 @@ You can print a help message by running the script without any parameters:
 ### Example
 
 ```
-./zfs-inplace-rebalancing.sh -checksum true -passes 1 /pool/path/to/rebalance
+./zfs-inplace-rebalancing.sh --checksum true --passes 1 /pool/path/to/rebalance
 ```
 
 ### Things to consider
