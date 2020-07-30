@@ -42,6 +42,15 @@ Due to the working principle of this script, which essentially creates a duplica
 
 Due to the working principle of this script, it is crucial that you **only run it on data that is not actively accessed**, since the original file will be deleted.
 
+## Installation
+
+Since this is a simple bash script, there is no package. Simply download the script and make it executable:
+
+```shell
+wget https://github.com/markusressel/zfs-inplace-rebalancing/blob/master/zfs-inplace-rebalancing.sh
+chmod +x ./zfs-inplace-rebalancing.sh
+```
+
 ## Usage
 
 **ALWAYS HAVE A BACKUP OF YOUR DATA!**
@@ -49,7 +58,6 @@ Due to the working principle of this script, it is crucial that you **only run i
 You can print a help message by running the script without any parameters:
 
 ```
-chmod +x ./zfs-inplace-rebalancing.sh
 ./zfs-inplace-rebalancing.sh
 ```
 
