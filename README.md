@@ -10,6 +10,7 @@ This script recursively traverses all the files in a given directory. Each file 
 Note that this process is not entirely "in-place", since a file has to be fully copied before the original is deleted. The term is used to make it clear that no additional pool (and therefore hardware) is necessary to use this script. However, this also means that you have to have enough space to create a copy of the biggest file in your target directory for it to work.
 
 At no point in time are both versions of the original file deleted.
+To make sure file attributes, permissions and file content are maintained when copying the original file, all attributes and the file checksum is compared before removing the original file.
 Since file attributes are fully retained, it is not possible to verify if an individual file has been rebalanced.
 
 ## Prerequisites
