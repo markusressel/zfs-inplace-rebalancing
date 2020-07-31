@@ -78,7 +78,7 @@ You can print a help message by running the script without any parameters:
 
 Although this script **does** have a progress output (files as well as percentage) it might be a good idea to try a small subfolder first, or process your pool folder layout in manually selected badges. This can also limit the damage done, if anything bad happens.
 
-When aborting the script midway through, be sure to check the last lines of its output. When cancelling before or during the renaming process a ".rebalance" file might be left and you have to rename it manually.
+When aborting the script midway through, be sure to check the last lines of its output. When cancelling before or during the renaming process a ".rebalance" file might be left and you have to rename (or delete) it manually.
 
 Although the `--passes` paramter can be used to limit the maximum amount of rebalance passes per file, it is only meant to speedup aborted runs. Individual files will **not be process multiple times automatically**. To reach multiple passes you have to run the script on the same target directory multiple times.
 
