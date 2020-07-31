@@ -60,6 +60,10 @@ function rebalance () {
     progress_percent=$(echo "scale=2; ${current_index}*100/${file_count}" | bc)
     color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
 
+    if [[ ! -f "${file_path}" ]]; then
+        color_echo "${Yellow}" "File is missing, skipping: ${file_path}" 
+    fi
+
     if [ "${passes_flag}" -ge 1 ]; then
         # check if target rebalance count is reached
         rebalance_count=$(get_rebalance_count "${file_path}")
