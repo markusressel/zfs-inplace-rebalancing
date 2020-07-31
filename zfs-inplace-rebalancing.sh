@@ -105,6 +105,7 @@ function rebalance () {
             # file attributes
             original_md5=$(lsattr "${file_path}" | awk '{print $1}')
             # file permissions, owner, group
+            # shellcheck disable=SC2012
             original_md5="${original_md5} $(ls -lha "${file_path}" | awk '{print $1 " " $3 " " $4}')"
             # file content
             original_md5="${original_md5} $(md5sum -b "${file_path}" | awk '{print $1}')"
@@ -112,6 +113,7 @@ function rebalance () {
             # file attributes
             copy_md5=$(lsattr "${tmp_file_path}" | awk '{print $1}')
             # file permissions, owner, group
+            # shellcheck disable=SC2012
             copy_md5="${copy_md5} $(ls -lha "${tmp_file_path}" | awk '{print $1 " " $3 " " $4}')"
             # file content
             copy_md5="${copy_md5} $(md5sum -b "${tmp_file_path}" | awk '{print $1}')"
@@ -122,6 +124,7 @@ function rebalance () {
             # file attributes
             original_md5=$(lsattr "${file_path}" | awk '{print $1}')
             # file permissions, owner, group
+            # shellcheck disable=SC2012
             original_md5="${original_md5} $(ls -lha "${file_path}" | awk '{print $1 " " $3 " " $4}')"
             # file content
             original_md5="${original_md5} $(md5 -q "${file_path}")"
@@ -129,6 +132,7 @@ function rebalance () {
             # file attributes
             copy_md5=$(lsattr "${tmp_file_path}" | awk '{print $1}')
             # file permissions, owner, group
+            # shellcheck disable=SC2012
             copy_md5="${copy_md5} $(ls -lha "${tmp_file_path}" | awk '{print $1 " " $3 " " $4}')"
             # file content
             copy_md5="${copy_md5} $(md5 -q "${tmp_file_path}")"
