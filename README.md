@@ -87,11 +87,11 @@ Although the `--passes` parameter can be used to limit the maximum amount of reb
 GitHub is for social coding: if you want to write code, I encourage contributions through pull requests from forks
 of this repository. Create GitHub tickets for bugs and new features and comment on the ones that you are interested in.
 
-## Attributions
+# Attributions
 
 This script was inspired by [zfs-balancer](https://github.com/programster/zfs-balancer).
 
-## Disclaimer
+# Disclaimer
 
 This software is provided "as is" and "as available", without any warranty.  
 **ALWAYS HAVE A BACKUP OF YOUR DATA!**
