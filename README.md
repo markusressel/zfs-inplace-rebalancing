@@ -82,6 +82,11 @@ When aborting the script midway through, be sure to check the last lines of its 
 
 Although the `--passes` parameter can be used to limit the maximum amount of rebalance passes per file, it is only meant to speedup aborted runs. Individual files will **not be process multiple times automatically**. To reach multiple passes you have to run the script on the same target directory multiple times.
 
+# Contributing
+
+GitHub is for social coding: if you want to write code, I encourage contributions through pull requests from forks
+of this repository. Create GitHub tickets for bugs and new features and comment on the ones that you are interested in.
+
 ## Attributions
 
 This script was inspired by [zfs-balancer](https://github.com/programster/zfs-balancer).
