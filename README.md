@@ -69,7 +69,7 @@ Due to the working principle of this script, it is crucial that you **only run i
 Since this is a simple bash script, there is no package. Simply download the script and make it executable:
 
 ```shell
-curl -O https://github.com/markusressel/zfs-inplace-rebalancing/blob/master/zfs-inplace-rebalancing.sh
+curl -O https://raw.githubusercontent.com/markusressel/zfs-inplace-rebalancing/master/zfs-inplace-rebalancing.sh
 chmod +x ./zfs-inplace-rebalancing.sh
 ```
 
