@@ -33,25 +33,25 @@ To check the current balance of a pool use:
 ```
 > zpool list -v
 
-NAME                                                      SIZE  ALLOC   FREE  CKPOINT  EXPANDSZ   FRAG    CAP  DEDUP    HEALTH  ALTROOT
-bpool                                                    1.88G   113M  1.76G        -         -     2%     5%  1.00x    ONLINE  -
-  mirror                                                 1.88G   113M  1.76G        -         -     2%  5.88%      -    ONLINE  
-    ata-Samsung_SSD_860_EVO_500GB_J0NBL-part2                -      -      -        -         -      -      -      -    ONLINE  
-    ata-Samsung_SSD_860_EVO_500GB_S4XB-part2                 -      -      -        -         -      -      -      -    ONLINE  
-rpool                                                     460G  3.66G   456G        -         -     0%     0%  1.00x    ONLINE  -
-  mirror                                                  460G  3.66G   456G        -         -     0%  0.79%      -    ONLINE  
-    ata-Samsung_SSD_860_EVO_500GB_S4BB-part3                 -      -      -        -         -      -      -      -    ONLINE  
-    ata-Samsung_SSD_860_EVO_500GB_S4XB-part3                 -      -      -        -         -      -      -      -    ONLINE  
-vol1                                                     9.06T  3.77T  5.29T        -         -    13%    41%  1.00x    ONLINE  -
-  mirror                                                 3.62T  1.93T  1.70T        -         -    25%  53.1%      -    ONLINE  
-    ata-WDC_WD40EFRX-68N32N0_WD-WCC                          -      -      -        -         -      -      -      -    ONLINE  
-    ata-ST4000VN008-2DR166_ZM4-part2                         -      -      -        -         -      -      -      -    ONLINE  
-  mirror                                                 3.62T  1.84T  1.78T        -         -     8%  50.9%      -    ONLINE  
-    ata-ST4000VN008-2DR166_ZM4-part2                         -      -      -        -         -      -      -      -    ONLINE  
-    ata-WDC_WD40EFRX-68N32N0_WD-WCC-part2                    -      -      -        -         -      -      -      -    ONLINE  
-  mirror                                                 1.81T   484K  1.81T        -         -     0%  0.00%      -    ONLINE  
-    ata-WDC_WD20EARX-00PASB0_WD-WMA-part2                    -      -      -        -         -      -      -      -    ONLINE  
-    ata-ST2000DM001-1CH164_Z1E-part2                         -      -      -        -         -      -      -      -    ONLINE  
+NAME                                              SIZE  ALLOC   FREE  CKPOINT  EXPANDSZ   FRAG    CAP  DEDUP    HEALTH  ALTROOT
+bpool                                            1.88G   113M  1.76G        -         -     2%     5%  1.00x    ONLINE  -
+  mirror                                         1.88G   113M  1.76G        -         -     2%  5.88%      -    ONLINE  
+    ata-Samsung_SSD_860_EVO_500GB_J0NBL-part2        -      -      -        -         -      -      -      -    ONLINE  
+    ata-Samsung_SSD_860_EVO_500GB_S4XB-part2         -      -      -        -         -      -      -      -    ONLINE  
+rpool                                             460G  3.66G   456G        -         -     0%     0%  1.00x    ONLINE  -
+  mirror                                          460G  3.66G   456G        -         -     0%  0.79%      -    ONLINE  
+    ata-Samsung_SSD_860_EVO_500GB_S4BB-part3         -      -      -        -         -      -      -      -    ONLINE  
+    ata-Samsung_SSD_860_EVO_500GB_S4XB-part3         -      -      -        -         -      -      -      -    ONLINE  
+vol1                                             9.06T  3.77T  5.29T        -         -    13%    41%  1.00x    ONLINE  -
+  mirror                                         3.62T  1.93T  1.70T        -         -    25%  53.1%      -    ONLINE  
+    ata-WDC_WD40EFRX-68N32N0_WD-WCC                  -      -      -        -         -      -      -      -    ONLINE  
+    ata-ST4000VN008-2DR166_ZM4-part2                 -      -      -        -         -      -      -      -    ONLINE  
+  mirror                                         3.62T  1.84T  1.78T        -         -     8%  50.9%      -    ONLINE  
+    ata-ST4000VN008-2DR166_ZM4-part2                 -      -      -        -         -      -      -      -    ONLINE  
+    ata-WDC_WD40EFRX-68N32N0_WD-WCC-part2            -      -      -        -         -      -      -      -    ONLINE  
+  mirror                                         1.81T   484K  1.81T        -         -     0%  0.00%      -    ONLINE  
+    ata-WDC_WD20EARX-00PASB0_WD-WMA-part2            -      -      -        -         -      -      -      -    ONLINE  
+    ata-ST2000DM001-1CH164_Z1E-part2                 -      -      -        -         -      -      -      -    ONLINE  
 ```
 
 and have a look at difference of the `CAP` value (`SIZE`/`FREE` vs `ALLOC` ratio) between vdevs.
