@@ -73,6 +73,9 @@ curl -O https://raw.githubusercontent.com/markusressel/zfs-inplace-rebalancing/m
 chmod +x ./zfs-inplace-rebalancing.sh
 ```
 
+Dependencies:
+* `pacman -S bc` - used for percentage calculation
+
 ## Usage
 
 **ALWAYS HAVE A BACKUP OF YOUR DATA!**
@@ -92,7 +95,11 @@ You can print a help message by running the script without any parameters:
 
 ### Example
 
+Make sure to run this script with a user that has rw permission to all of the files in the target directory.
+The easiest way to achieve this is by **running the script as root**.
+
 ```
+sudo su
 ./zfs-inplace-rebalancing.sh --checksum true --passes 1 /pool/path/to/rebalance
 ```
 
