@@ -60,9 +60,13 @@ and have a look at difference of the `CAP` value (`SIZE`/`FREE` vs `ALLOC` ratio
 
 Due to the working principle of this script, which essentially creates a duplicate file on purpose, deduplication will most definitely prevent it from working as intended. If you use deduplication you probably have to resort to a more expensive rebalancing method that involves additional drives.
 
-### Data selection
+### Data selection (cold data)
 
 Due to the working principle of this script, it is crucial that you **only run it on data that is not actively accessed**, since the original file will be deleted.
+
+### Snapshots
+
+If you do a snapshot of the data you want to balance before starting the rebalancing script, keep in mind that ZFS now has to keep track of all of the data in the target directory twice. Once in the snapshot you made, and once for the new copy. This means that you will effectively use double the file size of all files within the target directory. Therefore it is a good idea to process the pool data in badges and remove old snapshots along the way, since you probably will be hitting the capacity limits of your pool at some point during the rebalancing process.
 
 ## Installation
 
@@ -101,6 +105,12 @@ The easiest way to achieve this is by **running the script as root**.
 ```
 sudo su
 ./zfs-inplace-rebalancing.sh --checksum true --passes 1 /pool/path/to/rebalance
+```
+
+To keep track of the balancing progress, you can open another terminal and run:
+
+```
+watch zpool list -v
 ```
 
 ### Things to consider
