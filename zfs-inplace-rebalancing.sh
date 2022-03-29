@@ -40,7 +40,7 @@ function color_echo () {
 function get_rebalance_count () {
     file_path=$1
 
-    line_nr=$(grep -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
+    line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
     if [ -z "${line_nr}" ]; then
         echo "0"
         return
@@ -161,7 +161,7 @@ function rebalance () {
 
     if [ "${passes_flag}" -ge 1 ]; then
         # update rebalance "database"
-        line_nr=$(grep -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
+        line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
         if [ -z "${line_nr}" ]; then
         rebalance_count=1
         echo "${file_path}" >> "./${rebalance_db_file_name}"
