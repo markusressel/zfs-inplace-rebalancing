@@ -185,7 +185,7 @@ fi
 while true ; do
     case "$1" in
         -c | --checksum )
-            if [ "$2" -eq 1 ] || [[ "$2" =~ (on|true|yes) ]]; then
+            if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
                 checksum_flag="true"
             else
                 checksum_flag="false"
