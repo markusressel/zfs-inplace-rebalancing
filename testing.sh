@@ -25,18 +25,22 @@ function assertions() {
   # check error log is empty
   if grep -q '[^[:space:]]' $log_error_file; then
     echo "error log is not empty!"
+    cat $log_error_file
     exit 1
   fi
 }
 
 prepare
 ./zfs-inplace-rebalancing.sh $test_pool_data_path >> $log_std_file 2>> $log_error_file
+cat $log_std_file
 assertions
 
 prepare
 ./zfs-inplace-rebalancing.sh --checksum true --passes 1 $test_pool_data_path >> $log_std_file 2>> $log_error_file
+cat $log_std_file
 assertions
 
 prepare
 ./zfs-inplace-rebalancing.sh --checksum false $test_pool_data_path >> $log_std_file 2>> $log_error_file
+cat $log_std_file
 assertions
