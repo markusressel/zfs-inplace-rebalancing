@@ -86,7 +86,7 @@ Dependencies:
 
 You can print a help message by running the script without any parameters:
 
-```
+```shell
 ./zfs-inplace-rebalancing.sh
 ```
 
@@ -102,15 +102,27 @@ You can print a help message by running the script without any parameters:
 Make sure to run this script with a user that has rw permission to all of the files in the target directory.
 The easiest way to achieve this is by **running the script as root**.
 
-```
+```shell
 sudo su
 ./zfs-inplace-rebalancing.sh --checksum true --passes 1 /pool/path/to/rebalance
 ```
 
 To keep track of the balancing progress, you can open another terminal and run:
 
-```
+```shell
 watch zpool list -v
+```
+
+### Log to File
+
+To write the output to a file, simply redirect stdout and stderr to a file (or separate files).
+Since this redirects all output, you will have to follow the contents of the log files to get realtime info:
+
+```shell
+# one shell window:
+tail -F ./stdout.log
+# another shell window:
+./zfs-inplace-rebalancing.sh /pool/path/to/rebalance >> ./stdout.log 2>> ./stderr.log
 ```
 
 ### Things to consider
