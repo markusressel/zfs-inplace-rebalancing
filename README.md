@@ -7,6 +7,10 @@ Simple bash script to rebalance pool data between all mirrors when adding vdevs 
 
 This script recursively traverses all the files in a given directory. Each file is copied with a `.rebalance` suffix, retaining all file attributes. The original is then deleted and the *copy* is renamed back to the name of the original file. When copying a file ZFS will spread the data blocks across all vdevs, effectively distributing/rebalancing the data of the original file (more or less) evenly. This allows the pool data to be rebalanced without the need for a separate backup pool/drive.
 
+The way ZFS distributes writes is trivial, which makes it hard to predict how effective the redistribution will be. See:
+- https://jrs-s.net/2018/04/11/zfs-allocates-writes-according-to-free-space-per-vdev-not-latency-per-vdev/
+- https://jrs-s.net/2018/08/24/zfs-write-allocation-in-0-7-x/
+
 Note that this process is not entirely "in-place", since a file has to be fully copied before the original is deleted. The term is used to make it clear that no additional pool (and therefore hardware) is necessary to use this script. However, this also means that you have to have enough space to create a copy of the biggest file in your target directory for it to work.
 
 At no point in time are both versions of the original file deleted.
