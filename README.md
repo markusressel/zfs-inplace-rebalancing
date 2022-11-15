@@ -142,7 +142,7 @@ Although the `--passes` parameter can be used to limit the maximum amount of reb
 To increase portability, this script can also be run using docker:
 
 ```shell
-sudo docker run --rm -it -v /your/data:/data markusressel/zfs-inplace-rebalancing:latest ./data
+sudo docker run --rm -it -v /your/data:/data ghcr.io/markusressel/zfs-inplace-rebalancing:latest ./data
 ```
 
 # Contributing
