@@ -137,6 +137,14 @@ When aborting the script midway through, be sure to check the last lines of its 
 
 Although the `--passes` parameter can be used to limit the maximum amount of rebalance passes per file, it is only meant to speedup aborted runs. Individual files will **not be process multiple times automatically**. To reach multiple passes you have to run the script on the same target directory multiple times.
 
+### Dockerfile
+
+To increase portability, this script can also be run using docker:
+
+```shell
+sudo docker run --rm -it -v /your/data:/data markusressel/zfs-inplace-rebalancing:latest ./data
+```
+
 # Contributing
 
 GitHub is for social coding: if you want to write code, I encourage contributions through pull requests from forks
