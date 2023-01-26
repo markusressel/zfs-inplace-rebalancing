@@ -26,7 +26,7 @@ Cyan='\033[0;36m'         # Cyan
 
 # print a help message
 function print_usage() {
-  echo "Usage: zfs-inplace-rebalancing -checksum true -passes 1 /my/pool"
+  echo "Usage: zfs-inplace-rebalancing --checksum true --passes 1 /my/pool"
 }
 
 # print a given text entirely in a given color
