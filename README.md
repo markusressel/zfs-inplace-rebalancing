@@ -100,6 +100,7 @@ You can print a help message by running the script without any parameters:
 |-----------|-------------|---------|
 | `-c`<br>`--checksum` | Whether to compare attributes and content of the copied file using an **MD5** checksum. Technically this is a redundent check and consumes a lot of resources, so think twice. | `true` |
 | `-p`<br>`--passes`   | The maximum number of rebalance passes per file. Setting this to infinity by using a value `<= 0` might improve performance when rebalancing a lot of small files. | `1` |
+| `--skip-hardlinks`   | Skip rebalancing hardlinked files, since it will only create duplicate data. | `false` |
 
 ### Example
 
