@@ -26,7 +26,7 @@ Cyan='\033[0;36m'         # Cyan
 
 # print a help message
 function print_usage() {
-  echo "Usage: zfs-inplace-rebalancing --checksum true --passes 1 /my/pool"
+  echo "Usage: zfs-inplace-rebalancing --checksum true --skip-hardlinks false --passes 1 /my/pool"
 }
 
 # print a given text entirely in a given color
@@ -55,6 +55,18 @@ function get_rebalance_count () {
 # rebalance a specific file
 function rebalance () {
     file_path=$1
+
+    # check if file has >=2 links in the case of --skip-hardlinks
+    # this shouldn't be needed in the typical case of `find` only finding files with links == 1
+    # but this can run for a long time, so it's good to double check if something changed
+    if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
+        hardlink_count=$(stat -c "%h" "${file_path}")
+
+        if [ "${hardlink_count}" -ge 2 ]; then
+            echo "Skipping hard-linked file: ${file_path}"
+            return
+        fi
+    fi
 
     current_index="$((current_index + 1))"
     progress_percent=$(echo "scale=2; ${current_index}*100/${file_count}" | bc)
@@ -175,20 +187,33 @@ function rebalance () {
 }
 
 checksum_flag='true'
+skip_hardlinks_flag='false'
 passes_flag='1'
 
-if [ "$#" -eq 0 ]; then
+if [[ "$#" -eq 0 ]]; then
     print_usage
     exit 0
 fi
 
 while true ; do
     case "$1" in
+        -h | --help )
+            print_usage
+            exit 0
+        ;;
         -c | --checksum )
             if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
                 checksum_flag="true"
             else
                 checksum_flag="false"
+            fi
+            shift 2
+        ;;
+        --skip-hardlinks )
+            if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
+                skip_hardlinks_flag="true"
+            else
+                skip_hardlinks_flag="false"
             fi
             shift 2
         ;;
@@ -208,9 +233,15 @@ color_echo "$Cyan" "Start rebalancing:"
 color_echo "$Cyan" "  Path: ${root_path}"
 color_echo "$Cyan" "  Rebalancing Passes: ${passes_flag}"
 color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
+color_echo "$Cyan" "  Skip Hardlinks: ${skip_hardlinks_flag}"
 
 # count files
-file_count=$(find "${root_path}" -type f | wc -l)
+if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
+    file_count=$(find "${root_path}" -type f -links 1 | wc -l)
+else
+    file_count=$(find "${root_path}" -type f | wc -l)
+fi
+
 color_echo "$Cyan" "  File count: ${file_count}"
 
 # create db file
@@ -219,7 +250,13 @@ if [ "${passes_flag}" -ge 1 ]; then
 fi
 
 # recursively scan through files and execute "rebalance" procedure
-find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
+# in the case of --skip-hardlinks, only find files with links == 1
+if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
+    find "$root_path" -type f -links 1 -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
+else
+    find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
+fi
+
 echo ""
 echo ""
 color_echo "$Green" "Done!"
