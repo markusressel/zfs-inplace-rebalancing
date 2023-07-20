@@ -70,7 +70,7 @@ Due to the working principle of this script, it is crucial that you **only run i
 
 ### Snapshots
 
-If you do a snapshot of the data you want to balance before starting the rebalancing script, keep in mind that ZFS now has to keep track of all of the data in the target directory twice. Once in the snapshot you made, and once for the new copy. This means that you will effectively use double the file size of all files within the target directory. Therefore it is a good idea to process the pool data in badges and remove old snapshots along the way, since you probably will be hitting the capacity limits of your pool at some point during the rebalancing process.
+If you do a snapshot of the data you want to balance before starting the rebalancing script, keep in mind that ZFS now has to keep track of all of the data in the target directory twice. Once in the snapshot you made, and once for the new copy. This means that you will effectively use double the file size of all files within the target directory. Therefore it is a good idea to process the pool data in batches and remove old snapshots along the way, since you probably will be hitting the capacity limits of your pool at some point during the rebalancing process.
 
 ## Installation
 
