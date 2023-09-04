@@ -229,7 +229,7 @@ done;
 
 root_path=$1
 
-color_echo "$Cyan" "Start rebalancing:"
+color_echo "$Cyan" "Start rebalancing $(date):"
 color_echo "$Cyan" "  Path: ${root_path}"
 color_echo "$Cyan" "  Rebalancing Passes: ${passes_flag}"
 color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
