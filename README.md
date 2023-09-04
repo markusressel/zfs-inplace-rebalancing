@@ -82,7 +82,7 @@ chmod +x ./zfs-inplace-rebalancing.sh
 ```
 
 Dependencies:
-* `pacman -S bc` - used for percentage calculation
+* `perl` - it should be available on most systems by default
 
 ## Usage
 
