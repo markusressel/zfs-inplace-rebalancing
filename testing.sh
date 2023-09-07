@@ -14,7 +14,7 @@ function prepare() {
   # cleanup
   rm -f $log_std_file
   rm -f $log_error_file
-  rm -f rebalance_db.txt
+  rm -f rebalance.db
   rm -rf $test_pool_data_path
 
   # setup
