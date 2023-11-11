@@ -92,11 +92,12 @@ function rebalance () {
     if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
         # Linux
 
+        # --reflink=never -- force standard copy (see ZFS Block Cloning)
         # -a -- keep attributes
         # -d -- keep symlinks (dont copy target)
         # -x -- stay on one system
         # -p -- preserve ACLs too
-        cp -adxp "${file_path}" "${tmp_file_path}"
+        cp --reflink=never -adxp "${file_path}" "${tmp_file_path}"
     elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
         # Mac OS
         # FreeBSD
