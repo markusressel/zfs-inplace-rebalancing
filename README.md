@@ -16,17 +16,23 @@ Note that this process is not entirely "in-place", since a file has to be fully 
 At no point in time are both versions of the original file deleted.
 To make sure file attributes, permissions and file content are maintained when copying the original file, all attributes and the file checksum is compared before removing the original file (if not disabled using `--checksum false`).
 
-Since file attributes are fully retained, it is not possible to verify if an individual file has been rebalanced. However, this script keeps track of rebalanced files by maintaining a "database" file in its working directory called `rebalance_db.txt` (if not disabled using `--passes 0`). This file contains two lines of text for each processed file:
+Since file attributes are fully retained, it is not possible to verify if an individual file has been rebalanced. However, this script keeps track of rebalanced files by maintaining a database in its working directory called `rebalance.db` (if not disabled using `--passes 0`). This file is a standard SQLite 3 database, containing a single table `balancing`:
 
-* One line for the file path
-* and the next line for the current count of rebalance passes
+* `file` column contains full file path
+* `passes` column contains current count of rebalance passes
 
-```text
-/my/example/pool/file1.mkv
-1
-/my/example/pool/file2.mkv
-1
 ```
+# sqlite3 rebalance.db
+sqlite> .mode column
+sqlite> .headers on
+sqlite> SELECT * FROM balancing LIMIT 3;
+file                        passes
+--------------------------  ------
+/my/example/pool/file1.mkv  1
+/my/example/pool/file2.mkv  2
+/my/example/pool/file3.mkv  1
+```
+
 
 ## Prerequisites
 
@@ -83,6 +89,7 @@ chmod +x ./zfs-inplace-rebalancing.sh
 
 Dependencies:
 * `perl` - it should be available on most systems by default
+* `sqlite3` - it is installed by default on TrueNAS/Ubuntu/macOS, and available as an optional package in other distributions
 
 ## Usage
 
@@ -118,6 +125,7 @@ To keep track of the balancing progress, you can open another terminal and run:
 watch zpool list -v
 ```
 
+
 ### Log to File
 
 To write the output to a file, simply redirect stdout and stderr to a file (or separate files).
@@ -137,6 +145,11 @@ Although this script **does** have a progress output (files as well as percentag
 When aborting the script midway through, be sure to check the last lines of its output. When cancelling before or during the renaming process a ".balance" file might be left and you have to rename (or delete) it manually.
 
 Although the `--passes` parameter can be used to limit the maximum amount of rebalance passes per file, it is only meant to speedup aborted runs. Individual files will **not be process multiple times automatically**. To reach multiple passes you have to run the script on the same target directory multiple times.
+
+
+### Legacy database
+
+In previous versions of the script, a different format of the database was used. The database was stored in `rebalance_db.txt`. If this file is present upon running the newer versions, the run will be aborted. You either delete `rebalance_db.txt`, if you don't care about previous balances. This repository also provides `convert-legacy-db.sh` that is able to convert the legacy `rebalance_db.txt` database file into new `rebalance.db` one.
 
 ### Dockerfile
 
