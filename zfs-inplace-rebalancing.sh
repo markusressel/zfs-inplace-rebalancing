@@ -5,8 +5,13 @@ set -e
 # exit on undeclared variable
 set -u
 
-# file used to track processed files
-rebalance_db_file_name="rebalance_db.txt"
+# processed files database runtime variables
+rebalance_db_file_name="rebalance.db"
+
+# keeps changes before these are persisted to the database
+rebalance_db_cache='' #database filename
+rebalance_db_save_interval=60 # how often changes are persisted to the database in seconds
+rebalance_db_last_save=$SECONDS # when the database was last persisted
 
 # index used for progress
 current_index=0
@@ -36,24 +41,63 @@ function color_echo () {
     echo -e "${color}${text}${Color_Off}"
 }
 
+# Loads existing rebalance database, or creates a new one. Requires no parameters.
+function init_database () {
+  if [[ "${passes_flag}" -le 0 ]]; then
+    echo "skipped (--passes <= 0 requested)"
+    return
+  fi
 
+  if [[ ! -r "${rebalance_db_file_name}" ]]; then # database unreadable => either no db or no permissions
+    # try to create a new db - if this is a permission problem this will crash [as intended]
+    sqlite3 "${rebalance_db_file_name}" "CREATE TABLE balancing (file string primary key, passes integer)"
+    echo "initialized in ${rebalance_db_file_name}"
+  else # db is readable - do a simple sanity check to make sure it isn't broken/locked
+    local balanced
+    balanced=$(sqlite3 "${rebalance_db_file_name}" "SELECT COUNT(*) FROM balancing")
+    echo "found ${balanced} records in ${rebalance_db_file_name}"
+  fi
+}
+
+# Provides number of already completed balancing passes for a given file
+# Use: get_rebalance_count "/path/to/file"
+# Output: a non-negative integer
 function get_rebalance_count () {
-    file_path=$1
+    local count
+    count=$(sqlite3 "${rebalance_db_file_name}" "SELECT passes FROM balancing WHERE file = '${1//'/\'}'")
+    echo "${count:-0}"
+}
 
-    line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
-    if [ -z "${line_nr}" ]; then
-        echo "0"
-        return
-    else
-        rebalance_count_line_nr="$((line_nr + 1))"
-        rebalance_count=$(awk "NR == ${rebalance_count_line_nr}" "./${rebalance_db_file_name}")
-        echo "${rebalance_count}"
-        return
+function persist_database () {
+  color_echo "${Cyan}" "Flushing database changes..."
+  sqlite3 "${rebalance_db_file_name}" <<< "BEGIN TRANSACTION;${rebalance_db_cache};COMMIT;"
+  rebalance_db_cache=''
+  rebalance_db_last_save=$SECONDS
+}
+
+# Sets number of completed balancing passes for a given file
+# Use: set_rebalance_count "/path/to/file" 123
+function set_rebalance_count () {
+    rebalance_db_cache="${rebalance_db_cache};INSERT OR REPLACE INTO balancing VALUES('${1//'/\'}', $2);"
+    color_echo "${Green}" "File $1 completed $2 rebalance cycles"
+
+    # this is slightly "clever", as there's no way to access monotonic time in shell.
+    # $SECONDS contains a wall clock time since shell starting, but it's affected
+    #  by timezones and system time changes. "time_since_last" will calculate absolute
+    #  difference since last DB save. It may not be correct, but unless the time
+    #  changes constantly, it will save *at least* every $rebalance_db_save_time
+    local time_now=$SECONDS
+    local time_since_last=$(($time_now >= $rebalance_db_last_save ? $time_now - $rebalance_db_last_save : $rebalance_db_last_save - $time_now))
+    if [[ $time_since_last -gt $rebalance_db_save_interval ]]; then
+        persist_database
     fi
 }
 
-# rebalance a specific file
+# Rebalance a specific file
+# Use: rebalance "/path/to/file"
+# Output: log lines
 function rebalance () {
+    local file_path
     file_path=$1
 
     # check if file has >=2 links in the case of --skip-hardlinks
@@ -69,22 +113,26 @@ function rebalance () {
     fi
 
     current_index="$((current_index + 1))"
-    progress_percent=$(perl -e "printf('%0.2f', ${current_index}*100/${file_count})") 
-    color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
+    progress_percent=$(perl -e "printf('%0.2f', ${current_index}*100/${file_count})")
+    color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)"
 
     if [[ ! -f "${file_path}" ]]; then
-        color_echo "${Yellow}" "File is missing, skipping: ${file_path}" 
+        color_echo "${Yellow}" "File is missing, skipping: ${file_path}"
     fi
 
-    if [ "${passes_flag}" -ge 1 ]; then
-        # check if target rebalance count is reached
+
+    if [[ "${passes_flag}" -ge 1 ]]; then
+        # this count is reused later to update database
+        local rebalance_count
         rebalance_count=$(get_rebalance_count "${file_path}")
-        if [ "${rebalance_count}" -ge "${passes_flag}" ]; then
-        color_echo "${Yellow}" "Rebalance count (${passes_flag}) reached, skipping: ${file_path}"
-        return
+
+        # check if target rebalance count is reached
+        if [[ "${rebalance_count}" -ge "${passes_flag}" ]]; then
+          color_echo "${Yellow}" "Rebalance count of ${passes_flag} reached (${rebalance_count}), skipping: ${file_path}"
+          return
         fi
     fi
-   
+
     tmp_extension=".balance"
     tmp_file_path="${file_path}${tmp_extension}"
 
@@ -171,17 +219,7 @@ function rebalance () {
     mv "${tmp_file_path}" "${file_path}"
 
     if [ "${passes_flag}" -ge 1 ]; then
-        # update rebalance "database"
-        line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
-        if [ -z "${line_nr}" ]; then
-        rebalance_count=1
-        echo "${file_path}" >> "./${rebalance_db_file_name}"
-        echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
-        else
-        rebalance_count_line_nr="$((line_nr + 1))"
-        rebalance_count="$((rebalance_count + 1))"
-        sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
-        fi
+        set_rebalance_count "${file_path}" $((rebalance_count + 1))
     fi
 }
 
@@ -223,14 +261,21 @@ while true ; do
         *)
             break
         ;;
-    esac 
+    esac
 done;
 
 root_path=$1
 
-color_echo "$Cyan" "Start rebalancing $(date):"
+# ensure we don't do something unexpected
+if [[ -r "rebalance_db.txt" ]]; then
+  color_echo "${Red}" 'Found legacy database file in "rebalance_db.txt". To avoid possible unintended operations the process will terminate. You can either convert the legacy database using "convert-legacy-db.sh" script, or simply delete/rename "rebalance_db.txt"'
+  exit 2
+fi
+
+color_echo "$Cyan" "Start rebalancing:"
 color_echo "$Cyan" "  Path: ${root_path}"
 color_echo "$Cyan" "  Rebalancing Passes: ${passes_flag}"
+color_echo "$Cyan" "  Rebalancing DB: $(init_database)"
 color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
 color_echo "$Cyan" "  Skip Hardlinks: ${skip_hardlinks_flag}"
 
@@ -243,11 +288,6 @@ fi
 
 color_echo "$Cyan" "  File count: ${file_count}"
 
-# create db file
-if [ "${passes_flag}" -ge 1 ]; then
-    touch "./${rebalance_db_file_name}"
-fi
-
 # recursively scan through files and execute "rebalance" procedure
 # in the case of --skip-hardlinks, only find files with links == 1
 if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
@@ -255,6 +295,9 @@ if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
 else
     find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
 fi
+
+# There may be some pending changes as we will almost never hit the interval perfectly - flush it
+persist_database
 
 echo ""
 echo ""
