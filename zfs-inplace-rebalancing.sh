@@ -69,7 +69,7 @@ function rebalance () {
     fi
 
     current_index="$((current_index + 1))"
-    progress_percent=$(printf '%0.2f' "$((${current_index}*10000/${file_count}))e-2")
+    progress_percent=$(printf '%0.2f' "$(($current_index*10000/$file_count))e-2")
     color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
 
     if [[ ! -f "${file_path}" ]]; then
