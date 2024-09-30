@@ -60,9 +60,29 @@ function rebalance () {
     # this shouldn't be needed in the typical case of `find` only finding files with links == 1
     # but this can run for a long time, so it's good to double check if something changed
     if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
-        hardlink_count=$(stat -c "%h" "${file_path}")
+	if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
+	    # Linux
+	    #
+	    #  -c  --format=FORMAT
+	    #      use the specified FORMAT instead of the default; output a
+	    #      newline after each use of FORMAT
+	    #  %h     number of hard links
 
-        if [ "${hardlink_count}" -ge 2 ]; then
+	    hardlink_count=$(stat -c "%h" "${file_path}")
+	elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
+	    # Mac OS
+	    # FreeBSD
+	    #  -f format
+	    #  Display information using the specified format
+	    #   l       Number of hard links to file (st_nlink)
+
+	    hardlink_count=$(stat -f %l "${file_path}")
+	else
+		echo "Unsupported OS type: $OSTYPE"
+		exit 1
+	fi
+
+	if [ "${hardlink_count}" -ge 2 ]; then
             echo "Skipping hard-linked file: ${file_path}"
             return
         fi
@@ -180,7 +200,7 @@ function rebalance () {
         else
         rebalance_count_line_nr="$((line_nr + 1))"
         rebalance_count="$((rebalance_count + 1))"
-        sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
+        sed -i '' "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
         fi
     fi
 }
