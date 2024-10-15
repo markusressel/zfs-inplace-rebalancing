@@ -26,7 +26,7 @@ Cyan='\033[0;36m'         # Cyan
 
 # print a help message
 function print_usage() {
-  echo "Usage: zfs-inplace-rebalancing --checksum true --skip-hardlinks false --passes 1 /my/pool"
+  echo "Usage: zfs-inplace-rebalancing --checksum true --passes 1 /data/source /data/dest"
 }
 
 # print a given text entirely in a given color
@@ -55,37 +55,36 @@ function get_rebalance_count () {
 # rebalance a specific file
 function rebalance () {
     file_path=$1
+    hardlink_dir=$2
 
-    # check if file has >=2 links in the case of --skip-hardlinks
-    # this shouldn't be needed in the typical case of `find` only finding files with links == 1
+    # check if file has exactly 2 links
+    # this shouldn't be needed in the typical case of `find` only finding files with links == 2
     # but this can run for a long time, so it's good to double check if something changed
-    if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
-	if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
-	    # Linux
-	    #
-	    #  -c  --format=FORMAT
-	    #      use the specified FORMAT instead of the default; output a
-	    #      newline after each use of FORMAT
-	    #  %h     number of hard links
-
-	    hardlink_count=$(stat -c "%h" "${file_path}")
-	elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
-	    # Mac OS
-	    # FreeBSD
-	    #  -f format
-	    #  Display information using the specified format
-	    #   l       Number of hard links to file (st_nlink)
-
-	    hardlink_count=$(stat -f %l "${file_path}")
-	else
-		echo "Unsupported OS type: $OSTYPE"
-		exit 1
-	fi
-
-	if [ "${hardlink_count}" -ge 2 ]; then
-            echo "Skipping hard-linked file: ${file_path}"
-            return
-        fi
+    if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
+        # Linux
+        #
+        #  -c  --format=FORMAT
+        #      use the specified FORMAT instead of the default; output a
+        #      newline after each use of FORMAT
+        #  %h     number of hard links
+    
+        hardlink_count=$(stat -c "%h" "${file_path}")
+    elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
+        # Mac OS
+        # FreeBSD
+        #  -f format
+        #  Display information using the specified format
+        #   l       Number of hard links to file (st_nlink)
+    
+        hardlink_count=$(stat -f %l "${file_path}")
+    else
+    	echo "Unsupported OS type: $OSTYPE"
+    	exit 1
+    fi
+    
+    if [ "${hardlink_count}" -ne 2 ]; then
+        echo "Skipping non hard-linked file: ${file_path}"
+        return
     fi
 
     current_index="$((current_index + 1))"
@@ -108,6 +107,13 @@ function rebalance () {
     tmp_extension=".balance"
     tmp_file_path="${file_path}${tmp_extension}"
 
+    # Find other hardlinked file and remove it
+    inode_val=$(ls -i "${file_path}" | awk '{print $1}')
+    hardlink_path=$(find "${hardlink_dir}" -inum ${inode_val})
+    echo "Removing hardlink '${hardlink_path}'..."
+    rm "${hardlink_path}"
+
+    # Continue with rebalance
     echo "Copying '${file_path}' to '${tmp_file_path}'..."
     if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
         # Linux
@@ -190,6 +196,9 @@ function rebalance () {
     echo "Renaming temporary copy to original '${file_path}'..."
     mv "${tmp_file_path}" "${file_path}"
 
+    echo "Recreating deleted hardlink '${hardlink_path}'..."
+    ln "$file_path" "$hardlink_path"
+
     if [ "${passes_flag}" -ge 1 ]; then
         # update rebalance "database"
         line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
@@ -206,10 +215,9 @@ function rebalance () {
 }
 
 checksum_flag='true'
-skip_hardlinks_flag='false'
 passes_flag='1'
 
-if [[ "$#" -eq 0 ]]; then
+if [[ "$#" -ne 2 ]]; then
     print_usage
     exit 0
 fi
@@ -228,14 +236,6 @@ while true ; do
             fi
             shift 2
         ;;
-        --skip-hardlinks )
-            if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
-                skip_hardlinks_flag="true"
-            else
-                skip_hardlinks_flag="false"
-            fi
-            shift 2
-        ;;
         -p | --passes )
             passes_flag=$2
             shift 2
@@ -246,20 +246,17 @@ while true ; do
     esac 
 done;
 
-root_path=$1
+source_path=$1
+dest_path=$2
 
 color_echo "$Cyan" "Start rebalancing $(date):"
-color_echo "$Cyan" "  Path: ${root_path}"
+color_echo "$Cyan" "  Rebalance Path: ${source_path}"
+color_echo "$Cyan" "  Hardlink Path: ${dest_path}"
 color_echo "$Cyan" "  Rebalancing Passes: ${passes_flag}"
 color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
-color_echo "$Cyan" "  Skip Hardlinks: ${skip_hardlinks_flag}"
 
-# count files
-if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
-    file_count=$(find "${root_path}" -type f -links 1 | wc -l)
-else
-    file_count=$(find "${root_path}" -type f | wc -l)
-fi
+# count number of hardlinked files
+file_count=$(find "${source_path}" -type f -links 2 | wc -l)
 
 color_echo "$Cyan" "  File count: ${file_count}"
 
@@ -268,13 +265,8 @@ if [ "${passes_flag}" -ge 1 ]; then
     touch "./${rebalance_db_file_name}"
 fi
 
-# recursively scan through files and execute "rebalance" procedure
-# in the case of --skip-hardlinks, only find files with links == 1
-if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
-    find "$root_path" -type f -links 1 -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
-else
-    find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
-fi
+# recursively scan through files and execute "rebalance" procedure if the file is a hardlink
+find "${source_path}" -type f -links 2 -print0 | while IFS= read -r -d '' file; do rebalance "${file}" "${dest_path}"; done
 
 echo ""
 echo ""
