@@ -26,7 +26,8 @@ Cyan='\033[0;36m'         # Cyan
 
 # print a help message
 function print_usage() {
-  echo "Usage: zfs-inplace-rebalancing --checksum true --passes 1 /my/pool"
+  echo "Usage: zfs-inplace-rebalancing --checksum true --passes 1 source dest"
+  echo "Note: hardlinks in the 'dest' path will be temporarily deleted during the rebalance."
 }
 
 # print a given text entirely in a given color
@@ -55,9 +56,10 @@ function get_rebalance_count () {
 # rebalance a specific file
 function rebalance () {
     file_path=$1
+    hardlink_dir=$2
 
-    # check if file has >=2 links
-    # this shouldn't be needed in the typical case of `find` only finding files with links == 1
+    # check if file has exactly 2 links
+    # this shouldn't be needed in the typical case of `find` only finding files with links == 2
     # but this can run for a long time, so it's good to double check if something changed
     if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
         # Linux
@@ -66,7 +68,7 @@ function rebalance () {
         #      use the specified FORMAT instead of the default; output a
         #      newline after each use of FORMAT
         #  %h     number of hard links
-
+    
         hardlink_count=$(stat -c "%h" "${file_path}")
     elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
         # Mac OS
@@ -74,15 +76,15 @@ function rebalance () {
         #  -f format
         #  Display information using the specified format
         #   l       Number of hard links to file (st_nlink)
-
+    
         hardlink_count=$(stat -f %l "${file_path}")
     else
     	echo "Unsupported OS type: $OSTYPE"
     	exit 1
     fi
 
-    if [ "${hardlink_count}" -ge 2 ]; then
-        echo "Skipping hard-linked file: ${file_path}"
+    if [ "${hardlink_count}" -ne 2 ]; then
+        echo "Skipping non hard-linked file: ${file_path}"
         return
     fi
 
@@ -90,10 +92,21 @@ function rebalance () {
     progress_percent=$(printf '%0.2f' "$((current_index*10000/file_count))e-2")
     color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
 
+    # skip if the source file is no longer there
     if [[ ! -f "${file_path}" ]]; then
         color_echo "${Yellow}" "File is missing, skipping: ${file_path}" 
+	return
     fi
 
+    # skip if hardlink file is not found
+    inode_val=$(ls -i "${file_path}" | awk '{print $1}')
+    hardlink_path=$(find "${hardlink_dir}" -inum ${inode_val})
+    if [[ ! -f "${hardlink_path}" ]]; then
+        color_echo "${Yellow}" "Hardlink is missing, skipping: ${file_path}"
+	return
+    fi
+
+    # skip if target number of passes is reached
     if [ "${passes_flag}" -ge 1 ]; then
         # check if target rebalance count is reached
         rebalance_count=$(get_rebalance_count "${file_path}")
@@ -106,6 +119,7 @@ function rebalance () {
     tmp_extension=".balance"
     tmp_file_path="${file_path}${tmp_extension}"
 
+    # create copy of file with .balance suffix
     echo "Copying '${file_path}' to '${tmp_file_path}'..."
     if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
         # Linux
@@ -182,23 +196,29 @@ function rebalance () {
         fi
     fi
 
+    echo "Removing hardlink '${hardlink_path}'..."
+    rm "${hardlink_path}"
+
     echo "Removing original '${file_path}'..."
     rm "${file_path}"
 
     echo "Renaming temporary copy to original '${file_path}'..."
     mv "${tmp_file_path}" "${file_path}"
 
+    echo "Recreating deleted hardlink '${hardlink_path}'..."
+    ln "$file_path" "$hardlink_path"
+
     if [ "${passes_flag}" -ge 1 ]; then
         # update rebalance "database"
         line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
         if [ -z "${line_nr}" ]; then
-        rebalance_count=1
-        echo "${file_path}" >> "./${rebalance_db_file_name}"
-        echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
+            rebalance_count=1
+            echo "${file_path}" >> "./${rebalance_db_file_name}"
+            echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
         else
-        rebalance_count_line_nr="$((line_nr + 1))"
-        rebalance_count="$((rebalance_count + 1))"
-        sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
+            rebalance_count_line_nr="$((line_nr + 1))"
+            rebalance_count="$((rebalance_count + 1))"
+            sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
         fi
     fi
 }
@@ -235,15 +255,17 @@ while true ; do
     esac 
 done;
 
-root_path=$1
+source_path=$1
+dest_path=$2
 
 color_echo "$Cyan" "Start rebalancing $(date):"
-color_echo "$Cyan" "  Path: ${root_path}"
+color_echo "$Cyan" "  Rebalance Path: ${source_path}"
+color_echo "$Cyan" "  Hardlink Path: ${dest_path}"
 color_echo "$Cyan" "  Rebalancing Passes: ${passes_flag}"
 color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
 
-# count files
-file_count=$(find "${root_path}" -type f -links 1 | wc -l)
+# count number of hardlinked files
+file_count=$(find "${source_path}" -type f -links 2 | wc -l)
 
 color_echo "$Cyan" "  File count: ${file_count}"
 
@@ -252,8 +274,8 @@ if [ "${passes_flag}" -ge 1 ]; then
     touch "./${rebalance_db_file_name}"
 fi
 
-# recursively scan through files and execute "rebalance" procedure on files with links == 1
-find "$root_path" -type f -links 1 -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
+# recursively scan through files and execute "rebalance" procedure if the file is a hardlink
+find "${source_path}" -type f -links 2 -print0 | while IFS= read -r -d '' file; do rebalance "${file}" "${dest_path}"; done
 
 echo ""
 echo ""
