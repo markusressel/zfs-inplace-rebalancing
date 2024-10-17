@@ -26,7 +26,8 @@ Cyan='\033[0;36m'         # Cyan
 
 # print a help message
 function print_usage() {
-  echo "Usage: zfs-inplace-rebalancing --checksum true --passes 1 /data/source /data/dest"
+  echo "Usage: zfs-inplace-rebalancing --checksum true --passes 1 source dest"
+  echo "Note: hardlinks in the 'dest' path will be temporarily deleted during the rebalance."
 }
 
 # print a given text entirely in a given color
@@ -81,7 +82,7 @@ function rebalance () {
     	echo "Unsupported OS type: $OSTYPE"
     	exit 1
     fi
-    
+
     if [ "${hardlink_count}" -ne 2 ]; then
         echo "Skipping non hard-linked file: ${file_path}"
         return
@@ -91,10 +92,21 @@ function rebalance () {
     progress_percent=$(printf '%0.2f' "$((current_index*10000/file_count))e-2")
     color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
 
+    # skip if the source file is no longer there
     if [[ ! -f "${file_path}" ]]; then
         color_echo "${Yellow}" "File is missing, skipping: ${file_path}" 
+	return
     fi
 
+    # skip if hardlink file is not found
+    inode_val=$(ls -i "${file_path}" | awk '{print $1}')
+    hardlink_path=$(find "${hardlink_dir}" -inum ${inode_val})
+    if [[ ! -f "${hardlink_path}" ]]; then
+        color_echo "${Yellow}" "Hardlink is missing, skipping: ${file_path}"
+	return
+    fi
+
+    # skip if target number of passes is reached
     if [ "${passes_flag}" -ge 1 ]; then
         # check if target rebalance count is reached
         rebalance_count=$(get_rebalance_count "${file_path}")
@@ -107,13 +119,7 @@ function rebalance () {
     tmp_extension=".balance"
     tmp_file_path="${file_path}${tmp_extension}"
 
-    # Find other hardlinked file and remove it
-    inode_val=$(ls -i "${file_path}" | awk '{print $1}')
-    hardlink_path=$(find "${hardlink_dir}" -inum ${inode_val})
-    echo "Removing hardlink '${hardlink_path}'..."
-    rm "${hardlink_path}"
-
-    # Continue with rebalance
+    # create copy of file with .balance suffix
     echo "Copying '${file_path}' to '${tmp_file_path}'..."
     if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
         # Linux
@@ -190,6 +196,9 @@ function rebalance () {
         fi
     fi
 
+    echo "Removing hardlink '${hardlink_path}'..."
+    rm "${hardlink_path}"
+
     echo "Removing original '${file_path}'..."
     rm "${file_path}"
 
@@ -203,13 +212,13 @@ function rebalance () {
         # update rebalance "database"
         line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
         if [ -z "${line_nr}" ]; then
-        rebalance_count=1
-        echo "${file_path}" >> "./${rebalance_db_file_name}"
-        echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
+            rebalance_count=1
+            echo "${file_path}" >> "./${rebalance_db_file_name}"
+            echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
         else
-        rebalance_count_line_nr="$((line_nr + 1))"
-        rebalance_count="$((rebalance_count + 1))"
-        sed -i '' "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
+            rebalance_count_line_nr="$((line_nr + 1))"
+            rebalance_count="$((rebalance_count + 1))"
+            sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
         fi
     fi
 }
@@ -217,7 +226,7 @@ function rebalance () {
 checksum_flag='true'
 passes_flag='1'
 
-if [[ "$#" -ne 2 ]]; then
+if [[ "$#" -eq 0 ]]; then
     print_usage
     exit 0
 fi

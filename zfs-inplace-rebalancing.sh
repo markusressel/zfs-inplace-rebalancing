@@ -198,7 +198,7 @@ function rebalance () {
         else
         rebalance_count_line_nr="$((line_nr + 1))"
         rebalance_count="$((rebalance_count + 1))"
-        sed -i '' "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
+        sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
         fi
     fi
 }
