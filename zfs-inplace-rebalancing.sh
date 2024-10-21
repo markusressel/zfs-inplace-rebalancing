@@ -60,29 +60,29 @@ function rebalance () {
     # this shouldn't be needed in the typical case of `find` only finding files with links == 1
     # but this can run for a long time, so it's good to double check if something changed
     if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
-	if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
-	    # Linux
-	    #
-	    #  -c  --format=FORMAT
-	    #      use the specified FORMAT instead of the default; output a
-	    #      newline after each use of FORMAT
-	    #  %h     number of hard links
+        if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
+            # Linux
+            #
+            #  -c  --format=FORMAT
+            #      use the specified FORMAT instead of the default; output a
+            #      newline after each use of FORMAT
+            #  %h     number of hard links
 
-	    hardlink_count=$(stat -c "%h" "${file_path}")
-	elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
-	    # Mac OS
-	    # FreeBSD
-	    #  -f format
-	    #  Display information using the specified format
-	    #   l       Number of hard links to file (st_nlink)
+            hardlink_count=$(stat -c "%h" "${file_path}")
+        elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
+            # Mac OS
+            # FreeBSD
+            #  -f format
+            #  Display information using the specified format
+            #   l       Number of hard links to file (st_nlink)
 
-	    hardlink_count=$(stat -f %l "${file_path}")
-	else
-		echo "Unsupported OS type: $OSTYPE"
-		exit 1
-	fi
+            hardlink_count=$(stat -f %l "${file_path}")
+        else
+            echo "Unsupported OS type: $OSTYPE"
+            exit 1
+        fi
 
-	if [ "${hardlink_count}" -ge 2 ]; then
+        if [ "${hardlink_count}" -ge 2 ]; then
             echo "Skipping hard-linked file: ${file_path}"
             return
         fi
@@ -92,7 +92,7 @@ function rebalance () {
     progress_percent=$(printf '%0.2f' "$((current_index*10000/file_count))e-2")
     color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
 
-    if [[ ! -f "${file_path}" ]]; then
+    if [[ ! -a "${file_path}" ]]; then
         color_echo "${Yellow}" "File is missing, skipping: ${file_path}" 
     fi
 
@@ -100,11 +100,11 @@ function rebalance () {
         # check if target rebalance count is reached
         rebalance_count=$(get_rebalance_count "${file_path}")
         if [ "${rebalance_count}" -ge "${passes_flag}" ]; then
-        color_echo "${Yellow}" "Rebalance count (${passes_flag}) reached, skipping: ${file_path}"
-        return
+            color_echo "${Yellow}" "Rebalance count (${passes_flag}) reached, skipping: ${file_path}"
+            return
         fi
     fi
-   
+
     tmp_extension=".balance"
     tmp_file_path="${file_path}${tmp_extension}"
 
@@ -116,7 +116,8 @@ function rebalance () {
         # -a -- keep attributes, includes -d -- keep symlinks (dont copy target) and 
         #       -p -- preserve ACLs to
         # -x -- stay on one system
-        cp --reflink=never -ax "${file_path}" "${tmp_file_path}"
+        # -r -- recursive copy directories
+        cp --reflink=never -axr "${file_path}" "${tmp_file_path}"
     elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
         # Mac OS
         # FreeBSD
@@ -185,7 +186,8 @@ function rebalance () {
     fi
 
     echo "Removing original '${file_path}'..."
-    rm "${file_path}"
+    # -r -- recursively delete directories
+    rm -r "${file_path}"
 
     echo "Renaming temporary copy to original '${file_path}'..."
     mv "${tmp_file_path}" "${file_path}"
@@ -208,6 +210,7 @@ function rebalance () {
 checksum_flag='true'
 skip_hardlinks_flag='false'
 passes_flag='1'
+explicit_paths='false'
 
 if [[ "$#" -eq 0 ]]; then
     print_usage
@@ -236,6 +239,10 @@ while true ; do
             fi
             shift 2
         ;;
+        -x | --explicit-paths )
+            explicit_paths="true"
+            shift 1
+        ;;
         -p | --passes )
             passes_flag=$2
             shift 2
@@ -253,12 +260,15 @@ color_echo "$Cyan" "  Path: ${root_path}"
 color_echo "$Cyan" "  Rebalancing Passes: ${passes_flag}"
 color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
 color_echo "$Cyan" "  Skip Hardlinks: ${skip_hardlinks_flag}"
+color_echo "$Cyan" "  Explicit Paths: ${explicit_paths}"
 
 # count files
 if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
     file_count=$(find "${root_path}" -type f -links 1 | wc -l)
-else
+elif [[ "${explicit_paths,,}" == "false"* ]]; then
     file_count=$(find "${root_path}" -type f | wc -l)
+else
+    file_count=$#
 fi
 
 color_echo "$Cyan" "  File count: ${file_count}"
@@ -272,8 +282,16 @@ fi
 # in the case of --skip-hardlinks, only find files with links == 1
 if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
     find "$root_path" -type f -links 1 -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
-else
+elif [[ "${explicit_paths,,}" == "false"* ]]; then
     find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
+else
+    while true ; do
+        rebalance $1;
+        shift 1;
+        if [ $# -eq 0 ]; then
+            break;
+        fi
+    done;
 fi
 
 echo ""
