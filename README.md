@@ -30,6 +30,8 @@ Since file attributes are fully retained, it is not possible to verify if an ind
 1
 ```
 
+All files in a given inode group will be added to the database when processed. The highest count in a given inode group of files will be used to determine if the group should be skipped when processing against the number of passes specified
+
 The hardlink support process creates temporary files in the script location alongside `rebalance_db.txt` which are removed upon the end of each run. `files_list.txt` lists all files found in the given target location. `sorted_files_list.txt` lists all files sorted by inode number. `grouped_inodes.txt` lists all files by inode, but with all files from a given inode space separated on one line.
 
 ## Prerequisites
