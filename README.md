@@ -7,6 +7,8 @@ Simple bash script to rebalance pool data between all mirrors when adding vdevs 
 
 This script recursively traverses all the files in a given directory. Each file is copied with a `.balance` suffix, retaining all file attributes. The original is then deleted and the *copy* is renamed back to the name of the original file. When copying a file ZFS will spread the data blocks across all vdevs, effectively distributing/rebalancing the data of the original file (more or less) evenly. This allows the pool data to be rebalanced without the need for a separate backup pool/drive.
 
+When the script detects an inode group of hardlinked files, it will proceed to copy one file in the inode group. The original file and all hardlinks are then deleted, the *copy* is renamed back to the name of the original file, and new hardlinks are generated from that copy to replace all other linked files that were removed.
+
 The way ZFS distributes writes is not trivial, which makes it hard to predict how effective the redistribution will be. See:
 - https://jrs-s.net/2018/04/11/zfs-allocates-writes-according-to-free-space-per-vdev-not-latency-per-vdev/
 - https://jrs-s.net/2018/08/24/zfs-write-allocation-in-0-7-x/
@@ -27,6 +29,10 @@ Since file attributes are fully retained, it is not possible to verify if an ind
 /my/example/pool/file2.mkv
 1
 ```
+
+All files in a given inode group will be added to the database when processed. The highest count in a given inode group of files will be used to determine if the group should be skipped when processing against the number of passes in a given script execution.
+
+The hardlink support process creates temporary files in the script location alongside `rebalance_db.txt` which are removed upon the end of each run. `files_list.txt` lists all files found in the given target location. `sorted_files_list.txt` lists all files sorted by inode number. `grouped_inodes.txt` lists all files by inode, but with all files from a given inode space separated on one line.
 
 ## Prerequisites
 
@@ -83,6 +89,7 @@ chmod +x ./zfs-inplace-rebalancing.sh
 
 Dependencies:
 * `perl` - it should be available on most systems by default
+* `awk` - it should be available on most systems by default
 
 ## Usage
 
@@ -100,7 +107,7 @@ You can print a help message by running the script without any parameters:
 |-----------|-------------|---------|
 | `-c`<br>`--checksum` | Whether to compare attributes and content of the copied file using an **MD5** checksum. Technically this is a redundent check and consumes a lot of resources, so think twice. | `true` |
 | `-p`<br>`--passes`   | The maximum number of rebalance passes per file. Setting this to infinity by using a value `<= 0` might improve performance when rebalancing a lot of small files. | `1` |
-| `--skip-hardlinks`   | Skip rebalancing hardlinked files, since it will only create duplicate data. | `false` |
+| `--debug`   | Shows additional output, including listing all files in the target location 3 times (list, inode sorted list, inode groupings) and more granular move/copy/link/count transaction information. | `false` |
 
 ### Example
 
