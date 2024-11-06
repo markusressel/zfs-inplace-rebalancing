@@ -37,9 +37,9 @@ function color_echo () {
 }
 
 function get_rebalance_count () {
-    file_path=$1
+    file_path="$1"
 
-    line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
+    line_nr=$(grep -xF -n -e "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
     if [ -z "${line_nr}" ]; then
         echo "0"
         return
@@ -176,7 +176,7 @@ function process_inode_group() {
     if [ "${passes_flag}" -ge 1 ]; then
         # Update rebalance "database" for all files
         for path in "${paths[@]}"; do
-            line_nr=$(grep -xF -n "${path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
+            line_nr=$(grep -xF -n -e "${path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
             if [ -z "${line_nr}" ]; then
                 rebalance_count=1
                 echo "${path}" >> "./${rebalance_db_file_name}"
@@ -268,23 +268,19 @@ if [ "$debug_flag" = true ]; then
     cat sorted_files_list.txt
 fi
 
-# Use awk to group paths by inode key
+# Use awk to group paths by inode key and handle spaces in paths
 awk -F'|' '{
     key = $1
     path = $2
     if (key == prev_key) {
-        paths = paths " " path
+        print "\t" path
     } else {
         if (NR > 1) {
-            print prev_key "|" paths
+            # Do nothing
         }
+        print key
+        print "\t" path
         prev_key = key
-        paths = path
-    }
-}
-END {
-    if (NR > 0) {
-        print prev_key "|" paths
     }
 }' sorted_files_list.txt > grouped_inodes.txt
 
@@ -294,7 +290,7 @@ if [ "$debug_flag" = true ]; then
 fi
 
 # Count number of inode groups
-file_count=$(wc -l < grouped_inodes.txt | tr -d ' ')
+file_count=$(grep -cvP '^\t' grouped_inodes.txt)
 
 color_echo "$Cyan" "  Number of files to process: ${file_count}"
 
@@ -306,16 +302,30 @@ if [ "${passes_flag}" -ge 1 ]; then
     touch "./${rebalance_db_file_name}"
 fi
 
-# Read grouped_inodes.txt and process each group
-while IFS='|' read -r key paths; do
-    if [ "$debug_flag" = true ]; then
-        echo "Detected inode group: key=${key}"
-        echo "Paths:${paths}"
+key=""
+paths=()
+
+# Read grouped_inodes.txt line by line
+while IFS= read -r line; do
+    if [[ "$line" == $'\t'* ]]; then
+        # This is a path line
+        path="${line#$'\t'}"
+        paths+=("$path")
+    else
+        # This is a new inode key
+        if [[ "${#paths[@]}" -gt 0 ]]; then
+            # Process the previous group
+            process_inode_group "${paths[@]}"
+        fi
+        key="$line"
+        paths=()
     fi
-    # Split the paths into an array
-    read -a path_array <<< "${paths}"
-    process_inode_group "${path_array[@]}"
 done < grouped_inodes.txt
+
+# Process the last group after the loop ends
+if [[ "${#paths[@]}" -gt 0 ]]; then
+    process_inode_group "${paths[@]}"
+fi
 
 # Clean up temporary files
 rm files_list.txt sorted_files_list.txt grouped_inodes.txt
