@@ -165,13 +165,16 @@ function process_inode_group() {
     fi
     mv "${tmp_file_path}" "${main_file}"
 
-    echo "Recreating hardlinks..."
-    for (( i=1; i<${#paths[@]}; i++ )); do
-        if [ "$debug_flag" = true ]; then
-            echo "Linking ${main_file} to ${paths[$i]}"
-        fi
-        ln "${main_file}" "${paths[$i]}"
-    done
+    # Only recreate hardlinks if there are multiple paths
+    if [ "${num_paths}" -gt 1 ]; then
+        echo "Recreating hardlinks..."
+        for (( i=1; i<${#paths[@]}; i++ )); do
+            if [ "$debug_flag" = true ]; then
+                echo "Linking ${main_file} to ${paths[$i]}"
+            fi
+            ln "${main_file}" "${paths[$i]}"
+        done
+    fi
 
     if [ "${passes_flag}" -ge 1 ]; then
         # Update rebalance "database" for all files
