@@ -9,11 +9,20 @@ on:
     branches: [ master ]
 
 jobs:
-  shellcheck:
+  linuxTest:
     name: Test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
     - name: Run testing script
+      run: ./testing.sh
+
+  macOsTest:
+    name: Test
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run testing script on macOS
       run: ./testing.sh
