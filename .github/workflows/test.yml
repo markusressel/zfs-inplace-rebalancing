@@ -10,7 +10,7 @@ on:
 
 jobs:
   linuxTest:
-    name: Test
+    name: Test on Linux
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -19,7 +19,7 @@ jobs:
       run: ./testing.sh
 
   macOsTest:
-    name: Test
+    name: Test on macOS
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
