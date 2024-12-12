@@ -14,30 +14,29 @@ current_index=0
 ## Color Constants
 
 # Reset
-Color_Off='\033[0m'       # Text Reset
+Color_Off='\033[0m' # Text Reset
 
 # Regular Colors
-Red='\033[0;31m'          # Red
-Green='\033[0;32m'        # Green
-Yellow='\033[0;33m'       # Yellow
-Cyan='\033[0;36m'         # Cyan
+Red='\033[0;31m'    # Red
+Green='\033[0;32m'  # Green
+Yellow='\033[0;33m' # Yellow
+Cyan='\033[0;36m'   # Cyan
 
 ## Functions
 
 # print a help message
 function print_usage() {
-  echo "Usage: zfs-inplace-rebalancing --checksum true --skip-hardlinks false --passes 1 /my/pool"
+    echo "Usage: zfs-inplace-rebalancing --checksum true --skip-hardlinks false --passes 1 /my/pool"
 }
 
 # print a given text entirely in a given color
-function color_echo () {
+function color_echo() {
     color=$1
     text=$2
     echo -e "${color}${text}${Color_Off}"
 }
 
-
-function get_rebalance_count () {
+function get_rebalance_count() {
     file_path=$1
 
     line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
@@ -53,58 +52,58 @@ function get_rebalance_count () {
 }
 
 # rebalance a specific file
-function rebalance () {
+function rebalance() {
     file_path=$1
 
     # check if file has >=2 links in the case of --skip-hardlinks
     # this shouldn't be needed in the typical case of `find` only finding files with links == 1
     # but this can run for a long time, so it's good to double check if something changed
     if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
-	if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
-	    # Linux
-	    #
-	    #  -c  --format=FORMAT
-	    #      use the specified FORMAT instead of the default; output a
-	    #      newline after each use of FORMAT
-	    #  %h     number of hard links
+        if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
+            # Linux
+            #
+            #  -c  --format=FORMAT
+            #      use the specified FORMAT instead of the default; output a
+            #      newline after each use of FORMAT
+            #  %h     number of hard links
 
-	    hardlink_count=$(stat -c "%h" "${file_path}")
-	elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
-	    # Mac OS
-	    # FreeBSD
-	    #  -f format
-	    #  Display information using the specified format
-	    #   l       Number of hard links to file (st_nlink)
+            hardlink_count=$(stat -c "%h" "${file_path}")
+        elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
+            # Mac OS
+            # FreeBSD
+            #  -f format
+            #  Display information using the specified format
+            #   l       Number of hard links to file (st_nlink)
 
-	    hardlink_count=$(stat -f %l "${file_path}")
-	else
-		echo "Unsupported OS type: $OSTYPE"
-		exit 1
-	fi
+            hardlink_count=$(stat -f %l "${file_path}")
+        else
+            echo "Unsupported OS type: $OSTYPE"
+            exit 1
+        fi
 
-	if [ "${hardlink_count}" -ge 2 ]; then
+        if [ "${hardlink_count}" -ge 2 ]; then
             echo "Skipping hard-linked file: ${file_path}"
             return
         fi
     fi
 
     current_index="$((current_index + 1))"
-    progress_percent=$(printf '%0.2f' "$((current_index*10000/file_count))e-2")
-    color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)" 
+    progress_percent=$(printf '%0.2f' "$((current_index * 10000 / file_count))e-2")
+    color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)"
 
     if [[ ! -f "${file_path}" ]]; then
-        color_echo "${Yellow}" "File is missing, skipping: ${file_path}" 
+        color_echo "${Yellow}" "File is missing, skipping: ${file_path}"
     fi
 
     if [ "${passes_flag}" -ge 1 ]; then
         # check if target rebalance count is reached
         rebalance_count=$(get_rebalance_count "${file_path}")
         if [ "${rebalance_count}" -ge "${passes_flag}" ]; then
-        color_echo "${Yellow}" "Rebalance count (${passes_flag}) reached, skipping: ${file_path}"
-        return
+            color_echo "${Yellow}" "Rebalance count (${passes_flag}) reached, skipping: ${file_path}"
+            return
         fi
     fi
-   
+
     tmp_extension=".balance"
     tmp_file_path="${file_path}${tmp_extension}"
 
@@ -113,7 +112,7 @@ function rebalance () {
         # Linux
 
         # --reflink=never -- force standard copy (see ZFS Block Cloning)
-        # -a -- keep attributes, includes -d -- keep symlinks (dont copy target) and 
+        # -a -- keep attributes, includes -d -- keep symlinks (dont copy target) and
         #       -p -- preserve ACLs to
         # -x -- stay on one system
         cp --reflink=never -ax "${file_path}" "${tmp_file_path}"
@@ -121,8 +120,8 @@ function rebalance () {
         # Mac OS
         # FreeBSD
 
-        # -a -- Archive mode.  Same as -RpP. Includes preservation of modification 
-        #       time, access time, file flags, file mode, ACL, user ID, and group 
+        # -a -- Archive mode.  Same as -RpP. Includes preservation of modification
+        #       time, access time, file flags, file mode, ACL, user ID, and group
         #       ID, as allowed by permissions.
         # -x -- File system mount points are not traversed.
         cp -ax "${file_path}" "${tmp_file_path}"
@@ -194,13 +193,13 @@ function rebalance () {
         # update rebalance "database"
         line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
         if [ -z "${line_nr}" ]; then
-        rebalance_count=1
-        echo "${file_path}" >> "./${rebalance_db_file_name}"
-        echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
+            rebalance_count=1
+            echo "${file_path}" >>"./${rebalance_db_file_name}"
+            echo "${rebalance_count}" >>"./${rebalance_db_file_name}"
         else
-        rebalance_count_line_nr="$((line_nr + 1))"
-        rebalance_count="$((rebalance_count + 1))"
-        sed -i '' "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
+            rebalance_count_line_nr="$((line_nr + 1))"
+            rebalance_count="$((rebalance_count + 1))"
+            sed -i '' "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
         fi
     fi
 }
@@ -214,37 +213,37 @@ if [[ "$#" -eq 0 ]]; then
     exit 0
 fi
 
-while true ; do
+while true; do
     case "$1" in
-        -h | --help )
-            print_usage
-            exit 0
+    -h | --help)
+        print_usage
+        exit 0
         ;;
-        -c | --checksum )
-            if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
-                checksum_flag="true"
-            else
-                checksum_flag="false"
-            fi
-            shift 2
+    -c | --checksum)
+        if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
+            checksum_flag="true"
+        else
+            checksum_flag="false"
+        fi
+        shift 2
         ;;
-        --skip-hardlinks )
-            if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
-                skip_hardlinks_flag="true"
-            else
-                skip_hardlinks_flag="false"
-            fi
-            shift 2
+    --skip-hardlinks)
+        if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
+            skip_hardlinks_flag="true"
+        else
+            skip_hardlinks_flag="false"
+        fi
+        shift 2
         ;;
-        -p | --passes )
-            passes_flag=$2
-            shift 2
+    -p | --passes)
+        passes_flag=$2
+        shift 2
         ;;
-        *)
-            break
+    *)
+        break
         ;;
-    esac 
-done;
+    esac
+done
 
 root_path=$1
 
