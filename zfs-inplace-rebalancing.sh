@@ -163,14 +163,16 @@ function rebalance() {
             # note: no lsattr on Mac OS or FreeBSD
 
             # file permissions, owner, group size, modification time
-            original_md5="${original_md5} $(stat -f "%Sp %Su %Sg %z %m" "${file_path}")"
+            original_md5="$(stat -f "%Sp %Su %Sg %z %m" "${file_path}")"
             # file content
             original_md5="${original_md5} $(md5 -q "${file_path}")"
 
             # file permissions, owner, group size, modification time
-            copy_md5="${copy_md5} $(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
+            copy_md5="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
             # file content
             copy_md5="${copy_md5} $(md5 -q "${tmp_file_path}")"
+            # remove the temporary extension
+            copy_md5=${copy_md5%"${tmp_extension}"}
         else
             echo "Unsupported OS type: $OSTYPE"
             exit 1
