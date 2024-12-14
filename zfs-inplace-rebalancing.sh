@@ -58,7 +58,7 @@ function rebalance() {
     # check if file has >=2 links in the case of --skip-hardlinks
     # this shouldn't be needed in the typical case of `find` only finding files with links == 1
     # but this can run for a long time, so it's good to double check if something changed
-    if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
+    if [[ "${skip_hardlinks_flag}" == "true"* ]]; then
         if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
             # Linux
             #
@@ -254,7 +254,7 @@ color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
 color_echo "$Cyan" "  Skip Hardlinks: ${skip_hardlinks_flag}"
 
 # count files
-if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
+if [[ "${skip_hardlinks_flag}" == "true"* ]]; then
     file_count=$(find "${root_path}" -type f -links 1 | wc -l)
 else
     file_count=$(find "${root_path}" -type f | wc -l)
@@ -269,7 +269,7 @@ fi
 
 # recursively scan through files and execute "rebalance" procedure
 # in the case of --skip-hardlinks, only find files with links == 1
-if [[ "${skip_hardlinks_flag,,}" == "true"* ]]; then
+if [[ "${skip_hardlinks_flag}" == "true"* ]]; then
     find "$root_path" -type f -links 1 -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
 else
     find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
