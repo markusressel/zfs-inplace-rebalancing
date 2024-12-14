@@ -137,37 +137,38 @@ function rebalance() {
             # Linux
 
             # file attributes
-            original_md5=$(lsattr "${file_path}" | awk '{print $1}')
-            # file permissions, owner, group
-            # shellcheck disable=SC2012
-            original_md5="${original_md5} $(ls -lha "${file_path}" | awk '{print $1 " " $3 " " $4}')"
+            original_md5=$(lsattr "${file_path}")
+            # remove anything after the last space
+            original_md5=${original_md5% *}
+            # file permissions, owner, group, size, modification time
+            original_md5="${original_md5} $(stat -c "%A %U %G %s %Y" "${file_path}")"
             # file content
-            original_md5="${original_md5} $(md5sum -b "${file_path}" | awk '{print $1}')"
+            original_md5="${original_md5} $(md5sum -b "${file_path}")"
+
 
             # file attributes
-            copy_md5=$(lsattr "${tmp_file_path}" | awk '{print $1}')
-            # file permissions, owner, group
-            # shellcheck disable=SC2012
-            copy_md5="${copy_md5} $(ls -lha "${tmp_file_path}" | awk '{print $1 " " $3 " " $4}')"
+            copy_md5=$(lsattr "${tmp_file_path}")
+            # remove anything after the last space
+            copy_md5=${copy_md5% *}
+            # file permissions, owner, group, size, modification time
+            copy_md5="${copy_md5} $(stat -c "%A %U %G %s %Y" "${tmp_file_path}")"
             # file content
-            copy_md5="${copy_md5} $(md5sum -b "${tmp_file_path}" | awk '{print $1}')"
+            copy_md5="${copy_md5} $(md5sum -b "${tmp_file_path}")"
+            # remove the temporary extension
+            copy_md5=${copy_md5%"${tmp_extension}"}
         elif [[ "${OSTYPE}" == "darwin"* ]] || [[ "${OSTYPE}" == "freebsd"* ]]; then
             # Mac OS
             # FreeBSD
 
-            # file attributes
-            original_md5=$(lsattr "${file_path}" | awk '{print $1}')
-            # file permissions, owner, group
-            # shellcheck disable=SC2012
-            original_md5="${original_md5} $(ls -lha "${file_path}" | awk '{print $1 " " $3 " " $4}')"
+            # note: no lsattr on Mac OS or FreeBSD
+
+            # file permissions, owner, group size, modification time
+            original_md5="${original_md5} $(stat -f "%Sp %Su %Sg %z %m" "${file_path}")"
             # file content
             original_md5="${original_md5} $(md5 -q "${file_path}")"
 
-            # file attributes
-            copy_md5=$(lsattr "${tmp_file_path}" | awk '{print $1}')
-            # file permissions, owner, group
-            # shellcheck disable=SC2012
-            copy_md5="${copy_md5} $(ls -lha "${tmp_file_path}" | awk '{print $1 " " $3 " " $4}')"
+            # file permissions, owner, group size, modification time
+            copy_md5="${copy_md5} $(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
             # file content
             copy_md5="${copy_md5} $(md5 -q "${tmp_file_path}")"
         else
