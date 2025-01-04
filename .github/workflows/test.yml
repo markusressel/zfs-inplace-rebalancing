@@ -33,6 +33,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache
+        key: ${{ runner.os }}-cache-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-cache-
+
     - name: Test in FreeBSD
       id: test
       uses: vmactions/freebsd-vm@v1
@@ -41,5 +50,4 @@ jobs:
         prepare: |
           pkg install -y bash
         run: |
-          echo $OSTYPE
           ./testing.sh
