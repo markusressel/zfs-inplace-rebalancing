@@ -26,3 +26,17 @@ jobs:
 
     - name: Run testing script on macOS
       run: ./testing.sh
+
+  FreeBSDTest:
+    name: Test on FreeBSD
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test in FreeBSD
+      id: test
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+
+        run: ./testing.sh
