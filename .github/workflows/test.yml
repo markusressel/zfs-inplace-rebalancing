@@ -38,5 +38,8 @@ jobs:
       uses: vmactions/freebsd-vm@v1
       with:
         usesh: true
-
-        run: ./testing.sh
+        prepare: |
+          pkg install -y bash
+        run: |
+          echo $OSTYPE
+          ./testing.sh
