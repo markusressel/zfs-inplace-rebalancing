@@ -59,7 +59,7 @@ function rebalance() {
     # this shouldn't be needed in the typical case of `find` only finding files with links == 1
     # but this can run for a long time, so it's good to double check if something changed
     if [[ "${skip_hardlinks_flag}" == "true"* ]]; then
-        if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
+        if [[ "${OSName}" == "linux-gnu"* ]]; then
             # Linux
             #
             #  -c  --format=FORMAT
@@ -68,7 +68,7 @@ function rebalance() {
             #  %h     number of hard links
 
             hardlink_count=$(stat -c "%h" "${file_path}")
-        elif [[ "${OSTYPE}" == "darwin"* ]] || [[ "${OSTYPE}" == "freebsd"* ]]; then
+        elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
             # Mac OS
             # FreeBSD
             #  -f format
@@ -108,7 +108,7 @@ function rebalance() {
     tmp_file_path="${file_path}${tmp_extension}"
 
     echo "Copying '${file_path}' to '${tmp_file_path}'..."
-    if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
+    if [[ "${OSName}" == "linux-gnu"* ]]; then
         # Linux
 
         # --reflink=never -- force standard copy (see ZFS Block Cloning)
@@ -116,7 +116,7 @@ function rebalance() {
         #       -p -- preserve ACLs to
         # -x -- stay on one system
         cp --reflink=never -ax "${file_path}" "${tmp_file_path}"
-    elif [[ "${OSTYPE}" == "darwin"* ]] || [[ "${OSTYPE}" == "freebsd"* ]]; then
+    elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
         # Mac OS
         # FreeBSD
 
@@ -133,7 +133,7 @@ function rebalance() {
     # compare copy against original to make sure nothing went wrong
     if [[ "${checksum_flag}" == "true"* ]]; then
         echo "Comparing copy against original..."
-        if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
+        if [[ "${OSName}" == "linux-gnu"* ]]; then
             # Linux
 
             # file attributes
@@ -156,7 +156,7 @@ function rebalance() {
             copy_md5="${copy_md5} $(md5sum -b "${tmp_file_path}")"
             # remove the temporary extension
             copy_md5=${copy_md5%"${tmp_extension}"}
-        elif [[ "${OSTYPE}" == "darwin"* ]] || [[ "${OSTYPE}" == "freebsd"* ]]; then
+        elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
             # Mac OS
             # FreeBSD
 
@@ -249,6 +249,8 @@ while true; do
 done
 
 root_path=$1
+
+OSName=$(echo "$OSTYPE" | tr '[:upper:]' '[:lower:]')
 
 color_echo "$Cyan" "Start rebalancing $(date):"
 color_echo "$Cyan" "  Path: ${root_path}"
