@@ -169,8 +169,6 @@ function rebalance() {
             copy_checksum="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
             # file content
             copy_checksum="${copy_checksum} $(cksum "${tmp_file_path}" | awk '{ print $1 }')"
-            # remove the temporary extension
-            copy_checksum=${copy_checksum%"${tmp_extension}"}
         else
             echo "Unsupported OS type: $OSTYPE"
             exit 1
