@@ -137,25 +137,23 @@ function rebalance() {
             # Linux
 
             # file attributes
-            original_md5=$(lsattr "${file_path}")
+            original_checksum=$(lsattr "${file_path}")
             # remove anything after the last space
-            original_md5=${original_md5% *}
+            original_checksum=${original_checksum% *}
             # file permissions, owner, group, size, modification time
-            original_md5="${original_md5} $(stat -c "%A %U %G %s %Y" "${file_path}")"
+            original_checksum="${original_checksum} $(stat -c "%A %U %G %s %Y" "${file_path}")"
             # file content
-            original_md5="${original_md5} $(md5sum -b "${file_path}")"
+            original_checksum="${original_checksum} $(cksum "${file_path}" | awk '{ print $1 }')"
 
 
             # file attributes
-            copy_md5=$(lsattr "${tmp_file_path}")
+            copy_checksum=$(lsattr "${tmp_file_path}")
             # remove anything after the last space
-            copy_md5=${copy_md5% *}
+            copy_checksum=${copy_checksum% *}
             # file permissions, owner, group, size, modification time
-            copy_md5="${copy_md5} $(stat -c "%A %U %G %s %Y" "${tmp_file_path}")"
+            copy_checksum="${copy_checksum} $(stat -c "%A %U %G %s %Y" "${tmp_file_path}")"
             # file content
-            copy_md5="${copy_md5} $(md5sum -b "${tmp_file_path}")"
-            # remove the temporary extension
-            copy_md5=${copy_md5%"${tmp_extension}"}
+            copy_checksum="${copy_checksum} $(cksum "${file_path}" | awk '{ print $1 }')"
         elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
             # Mac OS
             # FreeBSD
@@ -163,25 +161,23 @@ function rebalance() {
             # note: no lsattr on Mac OS or FreeBSD
 
             # file permissions, owner, group size, modification time
-            original_md5="$(stat -f "%Sp %Su %Sg %z %m" "${file_path}")"
+            original_checksum="$(stat -f "%Sp %Su %Sg %z %m" "${file_path}")"
             # file content
-            original_md5="${original_md5} $(md5 -q "${file_path}")"
+            original_checksum="${original_checksum} $(cksum "${file_path}" | awk '{ print $1 }')"
 
             # file permissions, owner, group size, modification time
-            copy_md5="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
+            copy_checksum="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
             # file content
-            copy_md5="${copy_md5} $(md5 -q "${tmp_file_path}")"
-            # remove the temporary extension
-            copy_md5=${copy_md5%"${tmp_extension}"}
+            copy_checksum="${copy_checksum} $(cksum "${file_path}" | awk '{ print $1 }')"
         else
             echo "Unsupported OS type: $OSTYPE"
             exit 1
         fi
 
-        if [[ "${original_md5}" == "${copy_md5}"* ]]; then
-            color_echo "${Green}" "MD5 OK"
+        if [[ "${original_checksum}" == "${copy_checksum}"* ]]; then
+            color_echo "${Green}" "Checksum OK"
         else
-            color_echo "${Red}" "MD5 FAILED: ${original_md5} != ${copy_md5}"
+            color_echo "${Red}" "Checksum FAILED: ${original_checksum} != ${copy_checksum}"
             exit 1
         fi
     fi
