@@ -9,6 +9,7 @@ log_std_file=./test.log
 log_error_file=./error.log
 test_data_src=./test/pool
 test_pool_data_path=./testing_data
+test_pool_data_size_path=$test_pool_data_path/size
 
 ## Color Constants
 
@@ -18,6 +19,7 @@ Color_Off='\033[0m' # Text Reset
 # Regular Colors
 Red='\033[0;31m'    # Red
 Green='\033[0;32m'  # Green
+Yellow='\033[0;33m' # Yellow
 Cyan='\033[0;36m'   # Cyan
 
 ## Functions
@@ -61,6 +63,14 @@ function assert_matching_file_not_copied() {
     echo "File matching '$1' was copied when it should have been skipped!"
     exit 1
   fi
+}
+
+function print_time_taken(){
+  time_taken=$1
+  minute=$((time_taken / 60000))
+  seconde=$((time_taken % 60000 / 1000))
+  miliseconde=$((time_taken % 1000))
+  color_echo "$Yellow" "Time taken: ${minute}m ${seconde}s ${miliseconde}ms"
 }
 
 color_echo "$Cyan" "Running tests..."
@@ -107,5 +117,52 @@ assert_matching_file_not_copied "mp4.txt.link"
 assert_matching_file_not_copied "mp4.txt"
 assertions
 color_echo "$Green" "Tests passed!"
+
+color_echo "$Cyan" "Running tests with different file count and size..."
+prepare
+
+mkdir -p $test_pool_data_size_path
+
+color_echo "$Cyan" "Creating 1000 files of 1KB each..."
+mkdir -p $test_pool_data_size_path/small
+for i in {1..1000}; do
+  dd if=/dev/urandom of=$test_pool_data_size_path/small/file$i.txt bs=1024 count=1 >> /dev/null 2>&1
+done
+
+color_echo "$Cyan" "Creating 5 file of 1GB each..."
+mkdir -p $test_pool_data_size_path/big
+for i in {1..5}; do
+  dd if=/dev/urandom of=$test_pool_data_size_path/big/file$i.txt bs=1024 count=1048576 >> /dev/null 2>&1
+done
+
+color_echo "$Green" "Files created!"
+
+echo "Running rebalancing on small files..."
+# measure time taken
+start_time=$(date +%s%3N)
+./zfs-inplace-rebalancing.sh $test_pool_data_size_path/small >> $log_std_file 2>> $log_error_file
+end_time=$(date +%s%3N)
+print_time_taken $((end_time - start_time))
+assertions
+color_echo "$Green" "Tests passed!"
+
+echo "Running rebalancing on big files..."
+# measure time taken
+start_time=$(date +%s%3N)
+./zfs-inplace-rebalancing.sh $test_pool_data_size_path/big >> $log_std_file 2>> $log_error_file
+end_time=$(date +%s%3N)
+print_time_taken $((end_time - start_time))
+assertions
+color_echo "$Green" "Tests passed!"
+
+echo "Running rebalancing on all files..."
+# measure time taken whit
+start_time=$(date +%s%3N)
+./zfs-inplace-rebalancing.sh $test_pool_data_size_path >> $log_std_file 2>> $log_error_file
+end_time=$(date +%s%3N)
+print_time_taken $((end_time - start_time))
+assertions
+color_echo "$Green" "Tests passed!"
+
 
 color_echo "$Green" "All tests passed!"
