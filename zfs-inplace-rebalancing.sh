@@ -143,7 +143,7 @@ function rebalance() {
             # file permissions, owner, group, size, modification time
             original_checksum="${original_checksum} $(stat -c "%A %U %G %s %Y" "${file_path}")"
             # file content
-            original_checksum="${original_checksum} $(cksum "${file_path}" | awk '{ print $1 }')"
+            original_checksum="${original_checksum} $(cksum "${file_path}")"
 
 
             # file attributes
@@ -153,7 +153,9 @@ function rebalance() {
             # file permissions, owner, group, size, modification time
             copy_checksum="${copy_checksum} $(stat -c "%A %U %G %s %Y" "${tmp_file_path}")"
             # file content
-            copy_checksum="${copy_checksum} $(cksum "${file_path}" | awk '{ print $1 }')"
+            copy_checksum="${copy_checksum} $(cksum "${file_path}")"
+            # remove the temporary extension
+            copy_checksum=${copy_checksum%"${tmp_extension}"}
         elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
             # Mac OS
             # FreeBSD
@@ -163,12 +165,14 @@ function rebalance() {
             # file permissions, owner, group size, modification time
             original_checksum="$(stat -f "%Sp %Su %Sg %z %m" "${file_path}")"
             # file content
-            original_checksum="${original_checksum} $(cksum "${file_path}" | awk '{ print $1 }')"
+            original_checksum="${original_checksum} $(cksum "${file_path}")"
 
             # file permissions, owner, group size, modification time
             copy_checksum="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
             # file content
-            copy_checksum="${copy_checksum} $(cksum "${file_path}" | awk '{ print $1 }')"
+            copy_checksum="${copy_checksum} $(cksum "${file_path}")"
+            # remove the temporary extension
+            copy_checksum=${copy_checksum%"${tmp_extension}"}
         else
             echo "Unsupported OS type: $OSTYPE"
             exit 1
