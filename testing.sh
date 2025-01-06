@@ -126,13 +126,13 @@ mkdir -p $test_pool_data_size_path
 color_echo "$Cyan" "Creating 1000 files of 1KB each..."
 mkdir -p $test_pool_data_size_path/small
 for i in {1..1000}; do
-  dd if=/dev/urandom of=$test_pool_data_size_path/small/file$i.txt bs=1024 count=1 >> /dev/null 2>&1
+  dd if=/dev/urandom of=$test_pool_data_size_path/small/file_"$i".txt bs=1024 count=1 >> /dev/null 2>&1
 done
 
 color_echo "$Cyan" "Creating 5 file of 1GB each..."
 mkdir -p $test_pool_data_size_path/big
 for i in {1..5}; do
-  dd if=/dev/urandom of=$test_pool_data_size_path/big/file$i.txt bs=1024 count=1048576 >> /dev/null 2>&1
+  dd if=/dev/urandom of=$test_pool_data_size_path/big/file_"$i".txt bs=1024 count=1048576 >> /dev/null 2>&1
 done
 
 color_echo "$Green" "Files created!"
