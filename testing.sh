@@ -42,6 +42,21 @@ function prepare() {
   cp -rf $test_data_src $test_pool_data_path
 }
 
+# return time to the milisecond
+function get_time() {
+
+  case "$OSTYPE" in
+    darwin*)
+      date=$(gdate +%s%N)
+      ;;
+    *)
+      date=$(date +%s%N)
+      ;;
+  esac
+
+  echo "$date"
+}
+
 function assertions() {
   # check error log is empty
   if grep -q '[^[:space:]]' $log_error_file; then
@@ -139,30 +154,33 @@ color_echo "$Green" "Files created!"
 
 echo "Running rebalancing on small files..."
 # measure time taken
-start_time=$(date +%s%3N)
+start_time=$(get_time)
 ./zfs-inplace-rebalancing.sh $test_pool_data_size_path/small >> $log_std_file 2>> $log_error_file
-end_time=$(date +%s%3N)
-print_time_taken $((end_time - start_time))
+end_time=$(get_time)
+time_taken=$(( (end_time - start_time) / 1000000 ))
+print_time_taken $time_taken
 assertions
 color_echo "$Green" "Tests passed!"
 
 echo "Running rebalancing on big files..."
 rm -f rebalance_db.txt
 # measure time taken
-start_time=$(date +%s%3N)
+start_time=$(get_time)
 ./zfs-inplace-rebalancing.sh $test_pool_data_size_path/big >> $log_std_file 2>> $log_error_file
-end_time=$(date +%s%3N)
-print_time_taken $((end_time - start_time))
+end_time=$(get_time)
+time_taken=$(( (end_time - start_time) / 1000000 ))
+print_time_taken $time_taken
 assertions
 color_echo "$Green" "Tests passed!"
 
 echo "Running rebalancing on all files..."
 rm -f rebalance_db.txt
 # measure time taken
-start_time=$(date +%s%3N)
+start_time=$(get_time)
 ./zfs-inplace-rebalancing.sh $test_pool_data_size_path >> $log_std_file 2>> $log_error_file
-end_time=$(date +%s%3N)
-print_time_taken $((end_time - start_time))
+end_time=$(get_time)
+time_taken=$(( (end_time - start_time) / 1000000 ))
+print_time_taken $time_taken
 assertions
 color_echo "$Green" "Tests passed!"
 

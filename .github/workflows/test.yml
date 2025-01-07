@@ -24,6 +24,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install coreutils
+      run: brew install coreutils
+
     - name: Run testing script on macOS
       run: ./testing.sh
 
