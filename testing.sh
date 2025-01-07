@@ -147,6 +147,7 @@ assertions
 color_echo "$Green" "Tests passed!"
 
 echo "Running rebalancing on big files..."
+rm -f rebalance_db.txt
 # measure time taken
 start_time=$(date +%s%3N)
 ./zfs-inplace-rebalancing.sh $test_pool_data_size_path/big >> $log_std_file 2>> $log_error_file
@@ -156,7 +157,8 @@ assertions
 color_echo "$Green" "Tests passed!"
 
 echo "Running rebalancing on all files..."
-# measure time taken whit
+rm -f rebalance_db.txt
+# measure time taken
 start_time=$(date +%s%3N)
 ./zfs-inplace-rebalancing.sh $test_pool_data_size_path >> $log_std_file 2>> $log_error_file
 end_time=$(date +%s%3N)
@@ -164,5 +166,10 @@ print_time_taken $((end_time - start_time))
 assertions
 color_echo "$Green" "Tests passed!"
 
-
 color_echo "$Green" "All tests passed!"
+color_echo "$Cyan" "Cleaning"
+rm -f $log_std_file
+rm -f $log_error_file
+rm -f rebalance_db.txt
+rm -rf $test_pool_data_path
+
