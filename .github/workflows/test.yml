@@ -33,14 +33,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache
-        key: ${{ runner.os }}-cache-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-cache-
 
     - name: Test in FreeBSD
       id: test
