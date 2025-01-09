@@ -137,25 +137,19 @@ function rebalance() {
             # Linux
 
             # file attributes
-            original_checksum=$(lsattr "${file_path}")
+            original_perms=$(lsattr "${file_path}")
             # remove anything after the last space
-            original_checksum=${original_checksum% *}
+            original_perms=${original_perms% *}
             # file permissions, owner, group, size, modification time
-            original_checksum="${original_checksum} $(stat -c "%A %U %G %s %Y" "${file_path}")"
-            # file content
-            original_checksum="${original_checksum} $(cksum "${file_path}")"
+            original_perms="${original_perms} $(stat -c "%A %U %G %s %Y" "${file_path}")"
 
 
             # file attributes
-            copy_checksum=$(lsattr "${tmp_file_path}")
+            copy_perms=$(lsattr "${tmp_file_path}")
             # remove anything after the last space
-            copy_checksum=${copy_checksum% *}
+            copy_perms=${copy_perms% *}
             # file permissions, owner, group, size, modification time
-            copy_checksum="${copy_checksum} $(stat -c "%A %U %G %s %Y" "${tmp_file_path}")"
-            # file content
-            copy_checksum="${copy_checksum} $(cksum "${file_path}")"
-            # remove the temporary extension
-            copy_checksum=${copy_checksum%"${tmp_extension}"}
+            copy_perms="${copy_perms} $(stat -c "%A %U %G %s %Y" "${tmp_file_path}")"
         elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
             # Mac OS
             # FreeBSD
@@ -163,25 +157,26 @@ function rebalance() {
             # note: no lsattr on Mac OS or FreeBSD
 
             # file permissions, owner, group size, modification time
-            original_checksum="$(stat -f "%Sp %Su %Sg %z %m" "${file_path}")"
-            # file content
-            original_checksum="${original_checksum} $(cksum "${file_path}")"
+            original_perms="$(stat -f "%Sp %Su %Sg %z %m" "${file_path}")"
 
             # file permissions, owner, group size, modification time
-            copy_checksum="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
-            # file content
-            copy_checksum="${copy_checksum} $(cksum "${file_path}")"
-            # remove the temporary extension
-            copy_checksum=${copy_checksum%"${tmp_extension}"}
+            copy_perms="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
         else
             echo "Unsupported OS type: $OSTYPE"
             exit 1
         fi
 
-        if [[ "${original_checksum}" == "${copy_checksum}"* ]]; then
-            color_echo "${Green}" "Checksum OK"
+        if [[ "${original_perms}" == "${copy_perms}"* ]] && cmp -s "${file_path}" "${tmp_file_path}"; then
+            color_echo "${Green}" "Attribute and permission check OK"
         else
-            color_echo "${Red}" "Checksum FAILED: ${original_checksum} != ${copy_checksum}"
+            color_echo "${Red}" "Attribute and permission check FAILED: ${original_perms} != ${copy_perms}"
+            exit 1
+        fi
+
+        if cmp -s "${file_path}" "${tmp_file_path}"; then
+            color_echo "${Green}" "File content check OK"
+        else
+            color_echo "${Red}" "File content check FAILED"
             exit 1
         fi
     fi
