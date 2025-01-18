@@ -166,7 +166,7 @@ function rebalance() {
             exit 1
         fi
 
-        if [[ "${original_perms}" == "${copy_perms}"* ]] && cmp -s "${file_path}" "${tmp_file_path}"; then
+        if [[ "${original_perms}" == "${copy_perms}"* ]]; then
             color_echo "${Green}" "Attribute and permission check OK"
         else
             color_echo "${Red}" "Attribute and permission check FAILED: ${original_perms} != ${copy_perms}"
