@@ -205,6 +205,7 @@ function rebalance() {
 checksum_flag='true'
 skip_hardlinks_flag='false'
 passes_flag='1'
+size_flag='+-1'
 
 if [[ "$#" -eq 0 ]]; then
     print_usage
@@ -237,6 +238,10 @@ while true; do
         passes_flag=$2
         shift 2
         ;;
+    -s | --size)
+        size_flag="$2"
+        shift 2
+        ;;
     *)
         break
         ;;
@@ -252,12 +257,13 @@ color_echo "$Cyan" "  Path: ${root_path}"
 color_echo "$Cyan" "  Rebalancing Passes: ${passes_flag}"
 color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
 color_echo "$Cyan" "  Skip Hardlinks: ${skip_hardlinks_flag}"
+color_echo "$Cyan" "  Size: ${size_flag}"
 
 # count files
 if [[ "${skip_hardlinks_flag}" == "true"* ]]; then
-    file_count=$(find "${root_path}" -type f -links 1 | wc -l)
+    file_count=$(find "${root_path}" -type f -links 1 -size "${size_flag}" | wc -l)
 else
-    file_count=$(find "${root_path}" -type f | wc -l)
+    file_count=$(find "${root_path}" -type f -size "${size_flag}" | wc -l)
 fi
 
 color_echo "$Cyan" "  File count: ${file_count}"
@@ -270,9 +276,9 @@ fi
 # recursively scan through files and execute "rebalance" procedure
 # in the case of --skip-hardlinks, only find files with links == 1
 if [[ "${skip_hardlinks_flag}" == "true"* ]]; then
-    find "$root_path" -type f -links 1 -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
+    find "$root_path" -type f -links 1 -size "$size_flag" -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
 else
-    find "$root_path" -type f -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
+    find "$root_path" -type f -size "$size_flag" -print0 | while IFS= read -r -d '' file; do rebalance "$file"; done
 fi
 
 echo ""
