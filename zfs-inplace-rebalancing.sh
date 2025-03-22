@@ -14,29 +14,29 @@ current_index=0
 ## Color Constants
 
 # Reset
-Color_Off='\033[0m'       # Text Reset
+Color_Off='\033[0m' # Text Reset
 
 # Regular Colors
-Red='\033[0;31m'          # Red
-Green='\033[0;32m'        # Green
-Yellow='\033[0;33m'       # Yellow
-Cyan='\033[0;36m'         # Cyan
+Red='\033[0;31m'    # Red
+Green='\033[0;32m'  # Green
+Yellow='\033[0;33m' # Yellow
+Cyan='\033[0;36m'   # Cyan
 
 ## Functions
 
 # Print a help message
 function print_usage() {
-  echo "Usage: zfs-inplace-rebalancing.sh --checksum true --passes 1 --debug false /my/pool"
+    echo "Usage: zfs-inplace-rebalancing.sh --checksum true --passes 1 --debug false /my/pool"
 }
 
 # Print a given text entirely in a given color
-function color_echo () {
+function color_echo() {
     color=$1
     text=$2
     echo -e "${color}${text}${Color_Off}"
 }
 
-function get_rebalance_count () {
+function get_rebalance_count() {
     file_path="$1"
 
     line_nr=$(grep -xF -n -e "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
@@ -103,14 +103,14 @@ function process_inode_group() {
     if [ "$debug_flag" = true ]; then
         echo "Executing copy command:"
     fi
-    if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
+    if [[ "${OSName}" == "linux-gnu"* ]]; then
         # Linux
         cmd=(cp --reflink=never -ax "${main_file}" "${tmp_file_path}")
         if [ "$debug_flag" = true ]; then
             echo "${cmd[@]}"
         fi
         "${cmd[@]}"
-    elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
+    elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
         # Mac OS and FreeBSD
         cmd=(cp -ax "${main_file}" "${tmp_file_path}")
         if [ "$debug_flag" = true ]; then
@@ -123,30 +123,57 @@ function process_inode_group() {
     fi
 
     # Compare copy against original to make sure nothing went wrong
-    if [[ "${checksum_flag,,}" == "true"* ]]; then
+    if [[ "${checksum_flag}" == "true"* ]]; then
         echo "Comparing copy against original..."
-        if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
+        if [[ "${OSName}" == "linux-gnu"* ]]; then
             # Linux
-            original_md5=$(md5sum -b "${main_file}" | awk '{print $1}')
-            copy_md5=$(md5sum -b "${tmp_file_path}" | awk '{print $1}')
-        elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
-            # Mac OS and FreeBSD
-            original_md5=$(md5 -q "${main_file}")
-            copy_md5=$(md5 -q "${tmp_file_path}")
+
+            # file attributes
+            original_perms=$(lsattr "${main_file}")
+            # remove anything after the last space
+            original_perms=${original_perms% *}
+            # file permissions, owner, group, size, modification time
+            original_perms="${original_perms} $(stat -c "%A %U %G %s %Y" "${main_file}")"
+
+
+            # file attributes
+            copy_perms=$(lsattr "${tmp_file_path}")
+            # remove anything after the last space
+            copy_perms=${copy_perms% *}
+            # file permissions, owner, group, size, modification time
+            copy_perms="${copy_perms} $(stat -c "%A %U %G %s %Y" "${tmp_file_path}")"
+        elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
+            # Mac OS
+            # FreeBSD
+
+            # note: no lsattr on Mac OS or FreeBSD
+
+            # file permissions, owner, group size, modification time
+            original_perms="$(stat -f "%Sp %Su %Sg %z %m" "${main_file}")"
+
+            # file permissions, owner, group size, modification time
+            copy_perms="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
         else
             echo "Unsupported OS type: $OSTYPE"
             exit 1
         fi
 
         if [ "$debug_flag" = true ]; then
-            echo "Original MD5: $original_md5"
-            echo "Copy MD5: $copy_md5"
+            echo "Original perms: $original_perms"
+            echo "Copy perms: $copy_perms"
         fi
 
-        if [[ "${original_md5}" == "${copy_md5}" ]]; then
-            color_echo "${Green}" "MD5 OK"
+        if [[ "${original_perms}" == "${copy_perms}"* ]]; then
+            color_echo "${Green}" "Attribute and permission check OK"
         else
-            color_echo "${Red}" "MD5 FAILED: ${original_md5} != ${copy_md5}"
+            color_echo "${Red}" "Attribute and permission check FAILED: ${original_perms} != ${copy_perms}"
+            exit 1
+        fi
+
+        if cmp -s "${main_file}" "${tmp_file_path}"; then
+            color_echo "${Green}" "File content check OK"
+        else
+            color_echo "${Red}" "File content check FAILED"
             exit 1
         fi
     fi
@@ -206,39 +233,41 @@ if [[ "$#" -eq 0 ]]; then
     exit 0
 fi
 
-while true ; do
+while true; do
     case "$1" in
-        -h | --help )
-            print_usage
-            exit 0
+    -h | --help)
+        print_usage
+        exit 0
         ;;
-        -c | --checksum )
-            if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
-                checksum_flag="true"
-            else
-                checksum_flag="false"
-            fi
-            shift 2
+    -c | --checksum)
+        if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
+            checksum_flag="true"
+        else
+            checksum_flag="false"
+        fi
+        shift 2
         ;;
-        -p | --passes )
-            passes_flag=$2
-            shift 2
+    -p | --passes)
+        passes_flag=$2
+        shift 2
         ;;
-        --debug )
-            if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
-                debug_flag="true"
-            else
-                debug_flag="false"
-            fi
-            shift 2
+    --debug)
+        if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
+            debug_flag="true"
+        else
+            debug_flag="false"
+        fi
+        shift 2
         ;;
-        *)
-            break
+    *)
+        break
         ;;
-    esac 
-done;
+    esac
+done
 
 root_path=$1
+
+OSName=$(echo "$OSTYPE" | tr '[:upper:]' '[:lower:]')
 
 color_echo "$Cyan" "Start rebalancing $(date):"
 color_echo "$Cyan" "  Path: ${root_path}"
@@ -247,10 +276,10 @@ color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
 color_echo "$Cyan" "  Debug Mode: ${debug_flag}"
 
 # Generate files_list.txt with device and inode numbers using stat, separated by a pipe '|'
-if [[ "${OSTYPE,,}" == "linux-gnu"* ]]; then
+if [[ "${OSName}" == "linux-gnu"* ]]; then
     # Linux
     find "$root_path" -type f -not -path '*/.zfs/*' -exec stat --printf '%d:%i|%n\n' {} \; > files_list.txt
-elif [[ "${OSTYPE,,}" == "darwin"* ]] || [[ "${OSTYPE,,}" == "freebsd"* ]]; then
+elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
     # Mac OS and FreeBSD
     find "$root_path" -type f -not -path '*/.zfs/*' -exec sh -c 'stat -f "%d:%i|%N" "$0"' {} \; {} \; > files_list.txt
 else

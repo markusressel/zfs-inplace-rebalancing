@@ -9,11 +9,40 @@ on:
     branches: [ master ]
 
 jobs:
-  shellcheck:
-    name: Test
+  linuxTest:
+    name: Test on Linux
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
     - name: Run testing script
       run: ./testing.sh
+
+  macOsTest:
+    name: Test on macOS
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install coreutils
+      run: brew install coreutils
+
+    - name: Run testing script on macOS
+      run: ./testing.sh
+
+  FreeBSDTest:
+    name: Test on FreeBSD
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Test in FreeBSD
+      id: test
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: |
+          pkg install -y bash
+        run: |
+          ./testing.sh
