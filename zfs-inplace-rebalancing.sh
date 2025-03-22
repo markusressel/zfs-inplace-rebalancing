@@ -36,6 +36,14 @@ function color_echo() {
     echo -e "${color}${text}${Color_Off}"
 }
 
+# Print a given text entirely in a given color
+function echo_debug() {
+    if [ "$debug_flag" = true ]; then
+        text=$1
+        echo "${text}"
+    fi
+}
+
 function get_rebalance_count() {
     file_path="$1"
 
@@ -62,12 +70,10 @@ function process_inode_group() {
     progress_percent=$(printf '%0.2f' "${progress_raw}e-2")
     color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)"
 
-    if [ "$debug_flag" = true ]; then
-        echo "Processing inode group with ${num_paths} paths:"
-        for path in "${paths[@]}"; do
-            echo " - $path"
-        done
-    fi
+    echo_debug "Processing inode group with ${num_paths} paths:"
+    for path in "${paths[@]}"; do
+        echo_debug " - $path"
+    done
 
     # Check rebalance counts for all files
     should_skip=false
@@ -100,22 +106,17 @@ function process_inode_group() {
     tmp_file_path="${main_file}${tmp_extension}"
 
     echo "Copying '${main_file}' to '${tmp_file_path}'..."
-    if [ "$debug_flag" = true ]; then
-        echo "Executing copy command:"
-    fi
+    echo_debug "Executing copy command:"
+
     if [[ "${OSName}" == "linux-gnu"* ]]; then
         # Linux
         cmd=(cp --reflink=never -ax "${main_file}" "${tmp_file_path}")
-        if [ "$debug_flag" = true ]; then
-            echo "${cmd[@]}"
-        fi
+        echo_debug "${cmd[@]}"
         "${cmd[@]}"
     elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
         # Mac OS and FreeBSD
         cmd=(cp -ax "${main_file}" "${tmp_file_path}")
-        if [ "$debug_flag" = true ]; then
-            echo "${cmd[@]}"
-        fi
+        echo_debug "${cmd[@]}"
         "${cmd[@]}"
     else
         echo "Unsupported OS type: $OSTYPE"
@@ -158,10 +159,8 @@ function process_inode_group() {
             exit 1
         fi
 
-        if [ "$debug_flag" = true ]; then
-            echo "Original perms: $original_perms"
-            echo "Copy perms: $copy_perms"
-        fi
+        echo_debug "Original perms: $original_perms"
+        echo_debug "Copy perms: $copy_perms"
 
         if [[ "${original_perms}" == "${copy_perms}"* ]]; then
             color_echo "${Green}" "Attribute and permission check OK"
@@ -180,25 +179,19 @@ function process_inode_group() {
 
     echo "Removing original files..."
     for path in "${paths[@]}"; do
-        if [ "$debug_flag" = true ]; then
-            echo "Removing $path"
-        fi
+        echo_debug "Removing $path"
         rm "${path}"
     done
 
     echo "Renaming temporary copy to original '${main_file}'..."
-    if [ "$debug_flag" = true ]; then
-        echo "Moving ${tmp_file_path} to ${main_file}"
-    fi
+    echo_debug "Moving ${tmp_file_path} to ${main_file}"
     mv "${tmp_file_path}" "${main_file}"
 
     # Only recreate hardlinks if there are multiple paths
     if [ "${num_paths}" -gt 1 ]; then
         echo "Recreating hardlinks..."
         for (( i=1; i<${#paths[@]}; i++ )); do
-            if [ "$debug_flag" = true ]; then
-                echo "Linking ${main_file} to ${paths[$i]}"
-            fi
+            echo_debug "Linking ${main_file} to ${paths[$i]}"
             ln "${main_file}" "${paths[$i]}"
         done
     fi
@@ -215,9 +208,7 @@ function process_inode_group() {
                 rebalance_count_line_nr="$((line_nr + 1))"
                 rebalance_count=$(awk "NR == ${rebalance_count_line_nr}" "./${rebalance_db_file_name}")
                 rebalance_count="$((rebalance_count + 1))"
-                if [ "$debug_flag" = true ]; then
-                    echo "Updating rebalance count for ${path} to ${rebalance_count}"
-                fi
+                echo_debug "Updating rebalance count for ${path} to ${rebalance_count}"
                 sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
             fi
         done
@@ -287,16 +278,16 @@ else
     exit 1
 fi
 
+echo_debug "Contents of files_list.txt:"
 if [ "$debug_flag" = true ]; then
-    echo "Contents of files_list.txt:"
     cat files_list.txt
 fi
 
 # Sort files_list.txt by device and inode number
 sort -t '|' -k1,1 files_list.txt > sorted_files_list.txt
 
+echo_debug "Contents of sorted_files_list.txt:"
 if [ "$debug_flag" = true ]; then
-    echo "Contents of sorted_files_list.txt:"
     cat sorted_files_list.txt
 fi
 
@@ -316,8 +307,8 @@ awk -F'|' '{
     }
 }' sorted_files_list.txt > grouped_inodes.txt
 
+echo_debug "Contents of grouped_inodes.txt:"
 if [ "$debug_flag" = true ]; then
-    echo "Contents of grouped_inodes.txt:"
     cat grouped_inodes.txt
 fi
 
