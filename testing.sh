@@ -66,16 +66,9 @@ function assertions() {
   fi
 }
 
-function assert_matching_file_copied() {
-  if ! grep "Copying" $log_std_file | grep -q "$1"; then
-    echo "File matching '$1' was not copied when it should have been!"
-    exit 1
-  fi
-}
-
-function assert_matching_file_not_copied() {
-  if grep "Copying" $log_std_file | grep -q "$1"; then
-    echo "File matching '$1' was copied when it should have been skipped!"
+function assert_matching_file_hardlinked() {
+  if ! [ $(stat -c "%i" "$1") -eq $(stat -c "%i" "$2") ]; then
+    echo "File '$1' was not hardlinked to '$2' when it should have been!"
     exit 1
   fi
 }
@@ -111,25 +104,13 @@ cat $log_std_file
 assertions
 color_echo "$Green" "Tests passed!"
 
-color_echo "$Cyan" "Running tests with skip-hardlinks false..."
+color_echo "$Cyan" "Running tests with hardlinks..."
 prepare
 ln "$test_pool_data_path/projects/[2020] some project/mp4.txt" "$test_pool_data_path/projects/[2020] some project/mp4.txt.link"
 ./zfs-inplace-rebalancing.sh $test_pool_data_path >> $log_std_file 2>> $log_error_file
 cat $log_std_file
 # Both link files should be copied
-assert_matching_file_copied "mp4.txt"
-assert_matching_file_copied "mp4.txt.link"
-assertions
-color_echo "$Green" "Tests passed!"
-
-color_echo "$Cyan" "Running tests with skip-hardlinks true..."
-prepare
-ln "$test_pool_data_path/projects/[2020] some project/mp4.txt" "$test_pool_data_path/projects/[2020] some project/mp4.txt.link"
-./zfs-inplace-rebalancing.sh $test_pool_data_path >> $log_std_file 2>> $log_error_file
-cat $log_std_file
-# Neither file should be copied now, since they are each a hardlink
-assert_matching_file_not_copied "mp4.txt.link"
-assert_matching_file_not_copied "mp4.txt"
+assert_matching_file_hardlinked "$test_pool_data_path/projects/[2020] some project/mp4.txt" "$test_pool_data_path/projects/[2020] some project/mp4.txt.link"
 assertions
 color_echo "$Green" "Tests passed!"
 
