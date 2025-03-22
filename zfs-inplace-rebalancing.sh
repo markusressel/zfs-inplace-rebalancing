@@ -110,11 +110,21 @@ function process_inode_group() {
 
     if [[ "${OSName}" == "linux-gnu"* ]]; then
         # Linux
+
+        # --reflink=never -- force standard copy (see ZFS Block Cloning)
+        # -a -- keep attributes, includes -d -- keep symlinks (dont copy target) and
+        #       -p -- preserve ACLs to
+        # -x -- stay on one system
         cmd=(cp --reflink=never -ax "${main_file}" "${tmp_file_path}")
         echo_debug "${cmd[@]}"
         "${cmd[@]}"
     elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
         # Mac OS and FreeBSD
+
+        # -a -- Archive mode.  Same as -RpP. Includes preservation of modification
+        #       time, access time, file flags, file mode, ACL, user ID, and group
+        #       ID, as allowed by permissions.
+        # -x -- File system mount points are not traversed.
         cmd=(cp -ax "${main_file}" "${tmp_file_path}")
         echo_debug "${cmd[@]}"
         "${cmd[@]}"
