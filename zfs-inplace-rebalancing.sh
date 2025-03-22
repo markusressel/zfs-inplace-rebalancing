@@ -304,7 +304,7 @@ fi
 # Use awk to group paths by inode key and handle spaces in paths
 awk -F'|' '{
     key = $1
-    path = $2
+    path = substr($0, length(key)+2)
     if (key == prev_key) {
         print "\t" path
     } else {
