@@ -47,7 +47,7 @@ function echo_debug() {
 function get_rebalance_count() {
     file_path="$1"
 
-    line_nr=$(grep -xF -n -e "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
+    line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
     if [ -z "${line_nr}" ]; then
         echo "0"
         return
@@ -209,7 +209,7 @@ function process_inode_group() {
     if [ "${passes_flag}" -ge 1 ]; then
         # Update rebalance "database" for all files
         for path in "${paths[@]}"; do
-            line_nr=$(grep -xF -n -e "${path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
+            line_nr=$(grep -xF -n "${path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
             if [ -z "${line_nr}" ]; then
                 rebalance_count=1
                 echo "${path}" >> "./${rebalance_db_file_name}"
