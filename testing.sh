@@ -114,7 +114,7 @@ color_echo "$Green" "Tests passed!"
 color_echo "$Cyan" "Running tests with skip-hardlinks false..."
 prepare
 ln "$test_pool_data_path/projects/[2020] some project/mp4.txt" "$test_pool_data_path/projects/[2020] some project/mp4.txt.link"
-./zfs-inplace-rebalancing.sh --skip-hardlinks false $test_pool_data_path >> $log_std_file 2>> $log_error_file
+./zfs-inplace-rebalancing.sh $test_pool_data_path >> $log_std_file 2>> $log_error_file
 cat $log_std_file
 # Both link files should be copied
 assert_matching_file_copied "mp4.txt"
@@ -125,7 +125,7 @@ color_echo "$Green" "Tests passed!"
 color_echo "$Cyan" "Running tests with skip-hardlinks true..."
 prepare
 ln "$test_pool_data_path/projects/[2020] some project/mp4.txt" "$test_pool_data_path/projects/[2020] some project/mp4.txt.link"
-./zfs-inplace-rebalancing.sh --skip-hardlinks true $test_pool_data_path >> $log_std_file 2>> $log_error_file
+./zfs-inplace-rebalancing.sh $test_pool_data_path >> $log_std_file 2>> $log_error_file
 cat $log_std_file
 # Neither file should be copied now, since they are each a hardlink
 assert_matching_file_not_copied "mp4.txt.link"
