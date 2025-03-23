@@ -335,7 +335,6 @@ if [ "${passes_flag}" -ge 1 ]; then
     touch "./${rebalance_db_file_name}"
 fi
 
-key=""
 paths=()
 
 # Read grouped_inodes.txt line by line
@@ -350,7 +349,6 @@ while IFS= read -r line; do
             # Process the previous group
             process_inode_group "${paths[@]}"
         fi
-        key="$line"
         paths=()
     fi
 done < grouped_inodes.txt

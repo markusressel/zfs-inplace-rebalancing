@@ -67,7 +67,7 @@ function assertions() {
 }
 
 function assert_matching_file_hardlinked() {
-  if ! [ $(stat -c "%i" "$1") -eq $(stat -c "%i" "$2") ]; then
+  if ! [ "$(stat -c "%i" "$1")" -eq "$(stat -c "%i" "$2")" ]; then
     echo "File '$1' was not hardlinked to '$2' when it should have been!"
     exit 1
   fi
