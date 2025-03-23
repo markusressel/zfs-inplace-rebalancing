@@ -282,7 +282,7 @@ if [[ "${OSName}" == "linux-gnu"* ]]; then
     find "$root_path" -type f -not -path '*/.zfs/*' -exec stat --printf '%d:%i|%n\n' {} \; > files_list.txt
 elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
     # Mac OS and FreeBSD
-    find "$root_path" -type f -not -path '*/.zfs/*' -exec sh -c 'stat -f "%d:%i|%N" "$0"' {} \; > files_list.txt
+    find "$root_path" -type f -not -path '*/.zfs/*' -exec stat -f "%d:%i|%N" {} \; > files_list.txt
 else
     echo "Unsupported OS type: $OSTYPE"
     exit 1

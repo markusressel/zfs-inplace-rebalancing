@@ -57,6 +57,20 @@ function get_time() {
   echo "$date"
 }
 
+function get_inode() {
+
+  case "$OSTYPE" in
+    darwin*)
+      inode=$(stat -f "%i" "$1")
+      ;;
+    *)
+      inode=$(stat -c "%i" "$1")
+      ;;
+  esac
+
+  echo "$inode"
+}
+
 function assertions() {
   # check error log is empty
   if grep -q '[^[:space:]]' $log_error_file; then
@@ -67,7 +81,7 @@ function assertions() {
 }
 
 function assert_matching_file_hardlinked() {
-  if ! [ "$(stat -c "%i" "$1")" -eq "$(stat -c "%i" "$2")" ]; then
+  if ! [ "$(get_inode "$1")" -eq "$(get_inode "$2")" ]; then
     echo "File '$1' was not hardlinked to '$2' when it should have been!"
     exit 1
   fi
