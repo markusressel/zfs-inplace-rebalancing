@@ -323,7 +323,7 @@ if [ "$debug_flag" = true ]; then
 fi
 
 # Count number of inode groups
-file_count=$(grep -cvP '^\t' grouped_inodes.txt)
+file_count=$(grep -c '^\w' grouped_inodes.txt)
 
 color_echo "$Cyan" "  Number of files to process: ${file_count}"
 
