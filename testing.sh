@@ -22,6 +22,9 @@ Green='\033[0;32m'  # Green
 Yellow='\033[0;33m' # Yellow
 Cyan='\033[0;36m'   # Cyan
 
+
+OSName=$(echo "$OSTYPE" | tr '[:upper:]' '[:lower:]')
+
 ## Functions
 
 # print a given text entirely in a given color
@@ -44,29 +47,20 @@ function prepare() {
 
 # return time to the milisecond
 function get_time() {
-
-  case "$OSTYPE" in
-    darwin*)
-      date=$(gdate +%s%N)
-      ;;
-    *)
-      date=$(date +%s%N)
-      ;;
-  esac
-
+  if [[ "${OSName}" == "darwin"* ]]; then
+    date=$(gdate +%s%N)
+  else 
+    date=$(date +%s%N)
+  fi
   echo "$date"
 }
 
 function get_inode() {
-
-  case "$OSTYPE" in
-    darwin*)
-      inode=$(stat -f "%i" "$1")
-      ;;
-    *)
-      inode=$(stat -c "%i" "$1")
-      ;;
-  esac
+  if [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
+    inode=$(stat -f "%i" "$1")
+  else
+    inode=$(stat -c "%i" "$1")
+  fi
 
   echo "$inode"
 }
