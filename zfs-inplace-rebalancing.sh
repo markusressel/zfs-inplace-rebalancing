@@ -39,7 +39,7 @@ function color_echo() {
 # Print a given text entirely in a given color
 function echo_debug() {
     if [ "$debug_flag" = true ]; then
-        text=$@
+        text=("$@")
         echo "${text}"
     fi
 }
