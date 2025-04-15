@@ -1,5 +1,8 @@
 test.log
 error.log
 rebalance_db.txt
+files_list.txt
+sorted_files_list.txt
+grouped_inodes.txt
 testing_data
 .vscode

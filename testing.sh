@@ -22,6 +22,9 @@ Green='\033[0;32m'  # Green
 Yellow='\033[0;33m' # Yellow
 Cyan='\033[0;36m'   # Cyan
 
+
+OSName=$(echo "$OSTYPE" | tr '[:upper:]' '[:lower:]')
+
 ## Functions
 
 # print a given text entirely in a given color
@@ -44,17 +47,22 @@ function prepare() {
 
 # return time to the milisecond
 function get_time() {
-
-  case "$OSTYPE" in
-    darwin*)
-      date=$(gdate +%s%N)
-      ;;
-    *)
-      date=$(date +%s%N)
-      ;;
-  esac
-
+  if [[ "${OSName}" == "darwin"* ]]; then
+    date=$(gdate +%s%N)
+  else 
+    date=$(date +%s%N)
+  fi
   echo "$date"
+}
+
+function get_inode() {
+  if [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
+    inode=$(stat -f "%i" "$1")
+  else
+    inode=$(stat -c "%i" "$1")
+  fi
+
+  echo "$inode"
 }
 
 function assertions() {
@@ -66,16 +74,9 @@ function assertions() {
   fi
 }
 
-function assert_matching_file_copied() {
-  if ! grep "Copying" $log_std_file | grep -q "$1"; then
-    echo "File matching '$1' was not copied when it should have been!"
-    exit 1
-  fi
-}
-
-function assert_matching_file_not_copied() {
-  if grep "Copying" $log_std_file | grep -q "$1"; then
-    echo "File matching '$1' was copied when it should have been skipped!"
+function assert_matching_file_hardlinked() {
+  if [[ "$(get_inode "$1")" != "$(get_inode "$2")" ]]; then
+    echo "File '$1' was not hardlinked to '$2' when it should have been!"
     exit 1
   fi
 }
@@ -111,25 +112,13 @@ cat $log_std_file
 assertions
 color_echo "$Green" "Tests passed!"
 
-color_echo "$Cyan" "Running tests with skip-hardlinks false..."
+color_echo "$Cyan" "Running tests with hardlinks..."
 prepare
 ln "$test_pool_data_path/projects/[2020] some project/mp4.txt" "$test_pool_data_path/projects/[2020] some project/mp4.txt.link"
-./zfs-inplace-rebalancing.sh --skip-hardlinks false $test_pool_data_path >> $log_std_file 2>> $log_error_file
+./zfs-inplace-rebalancing.sh $test_pool_data_path >> $log_std_file 2>> $log_error_file
 cat $log_std_file
 # Both link files should be copied
-assert_matching_file_copied "mp4.txt"
-assert_matching_file_copied "mp4.txt.link"
-assertions
-color_echo "$Green" "Tests passed!"
-
-color_echo "$Cyan" "Running tests with skip-hardlinks true..."
-prepare
-ln "$test_pool_data_path/projects/[2020] some project/mp4.txt" "$test_pool_data_path/projects/[2020] some project/mp4.txt.link"
-./zfs-inplace-rebalancing.sh --skip-hardlinks true $test_pool_data_path >> $log_std_file 2>> $log_error_file
-cat $log_std_file
-# Neither file should be copied now, since they are each a hardlink
-assert_matching_file_not_copied "mp4.txt.link"
-assert_matching_file_not_copied "mp4.txt"
+assert_matching_file_hardlinked "$test_pool_data_path/projects/[2020] some project/mp4.txt" "$test_pool_data_path/projects/[2020] some project/mp4.txt.link"
 assertions
 color_echo "$Green" "Tests passed!"
 
