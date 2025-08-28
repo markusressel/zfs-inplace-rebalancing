@@ -26,7 +26,7 @@ Cyan='\033[0;36m'   # Cyan
 
 # Print a help message
 function print_usage() {
-    echo "Usage: zfs-inplace-rebalancing.sh --checksum true --passes 1 --debug false /my/pool"
+    echo "Usage: zfs-inplace-rebalancing.sh --checksum true --passes 1 --debug false --resume /my/pool"
 }
 
 # Print a given text entirely in a given color
@@ -226,6 +226,7 @@ function process_inode_group() {
 }
 
 checksum_flag='true'
+resume_flag='false'
 passes_flag='1'
 debug_flag='false'
 
@@ -260,6 +261,10 @@ while true; do
         fi
         shift 2
         ;;
+    -r | --resume)
+        resume_flag="true"
+        shift 1
+        ;;
     *)
         break
         ;;
@@ -276,54 +281,63 @@ color_echo "$Cyan" "  Rebalancing Passes: ${passes_flag}"
 color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
 color_echo "$Cyan" "  Debug Mode: ${debug_flag}"
 
-# Generate files_list.txt with device and inode numbers using stat, separated by a pipe '|'
-if [[ "${OSName}" == "linux-gnu"* ]]; then
-    # Linux
-    find "$root_path" -type f -not -path '*/.zfs/*' -exec stat --printf '%d:%i|%n\n' {} \; > files_list.txt
-elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
-    # Mac OS and FreeBSD
-    find "$root_path" -type f -not -path '*/.zfs/*' -exec stat -f "%d:%i|%N" {} \; > files_list.txt
-else
-    echo "Unsupported OS type: $OSTYPE"
-    exit 1
-fi
+if [ "$resume_flag" = "false" ]; then
+    # Generate files_list.txt with device and inode numbers using stat, separated by a pipe '|'
+    if [[ "${OSName}" == "linux-gnu"* ]]; then
+        # Linux
+        find "$root_path" -type f -not -path '*/.zfs/*' -exec stat --printf '%d:%i|%n\n' {} \; > files_list.txt
+    elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
+        # Mac OS and FreeBSD
+        find "$root_path" -type f -not -path '*/.zfs/*' -exec stat -f "%d:%i|%N" {} \; > files_list.txt
+    else
+        echo "Unsupported OS type: $OSTYPE"
+        exit 1
+    fi
 
-echo_debug "Contents of files_list.txt:"
-if [ "$debug_flag" = true ]; then
-    cat files_list.txt
-fi
+    echo_debug "Contents of files_list.txt:"
+    if [ "$debug_flag" = true ]; then
+        cat files_list.txt
+    fi
 
-# Sort files_list.txt by device and inode number
-sort -t '|' -k1,1 files_list.txt > sorted_files_list.txt
+    # Sort files_list.txt by device and inode number
+    sort -t '|' -k1,1 files_list.txt > sorted_files_list.txt
 
-echo_debug "Contents of sorted_files_list.txt:"
-if [ "$debug_flag" = true ]; then
-    cat sorted_files_list.txt
-fi
+    echo_debug "Contents of sorted_files_list.txt:"
+    if [ "$debug_flag" = true ]; then
+        cat sorted_files_list.txt
+    fi
 
-# Use awk to group paths by inode key and handle spaces in paths
-awk -F'|' '{
-    key = $1
-    path = substr($0, length(key)+2)
-    if (key == prev_key) {
-        print "\t" path
-    } else {
-        if (NR > 1) {
-            # Do nothing
+    # Use awk to group paths by inode key and handle spaces in paths
+    awk -F'|' '{
+        key = $1
+        path = substr($0, length(key)+2)
+        if (key == prev_key) {
+            print "\t" path
+        } else {
+            if (NR > 1) {
+                # Do nothing
+            }
+            print key
+            print "\t" path
+            prev_key = key
         }
-        print key
-        print "\t" path
-        prev_key = key
-    }
-}' sorted_files_list.txt > grouped_inodes.txt
+    }' sorted_files_list.txt > grouped_inodes.txt
+    inode_file="grouped_inodes.txt"
+else
+    last_file=$(tail -n 2 rebalance_db.txt|head -n 1)
+    resume_line_number=$(($(grep -n "$last_file" grouped_inodes.txt|cut -d: -f 1) + 1))
+    tail -n +$resume_line_number grouped_inodes.txt > resume_grouped_inodes.txt
+    inode_file="resume_grouped_inodes.txt"
+    exit 0
+fi
 
-echo_debug "Contents of grouped_inodes.txt:"
+echo_debug "Contents of inode_file:"
 if [ "$debug_flag" = true ]; then
-    cat grouped_inodes.txt
+    cat $inode_file
 fi
 
 # Count number of inode groups
-file_count=$(grep -c '^\w' grouped_inodes.txt)
+file_count=$(grep -c '^\w' $inode_file)
 
 color_echo "$Cyan" "  Number of files to process: ${file_count}"
 
@@ -337,7 +351,7 @@ fi
 
 paths=()
 
-# Read grouped_inodes.txt line by line
+# Read inode_file line by line
 while IFS= read -r line; do
     if [[ "$line" == $'\t'* ]]; then
         # This is a path line
@@ -351,7 +365,7 @@ while IFS= read -r line; do
         fi
         paths=()
     fi
-done < grouped_inodes.txt
+done < $inode_file
 
 # Process the last group after the loop ends
 if [[ "${#paths[@]}" -gt 0 ]]; then
@@ -359,7 +373,7 @@ if [[ "${#paths[@]}" -gt 0 ]]; then
 fi
 
 # Clean up temporary files
-rm files_list.txt sorted_files_list.txt grouped_inodes.txt
+rm -f files_list.txt sorted_files_list.txt grouped_inodes.txt resume_grouped_inodes.txt
 
 echo ""
 echo ""
