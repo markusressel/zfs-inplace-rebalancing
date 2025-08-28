@@ -102,7 +102,7 @@ function process_inode_group() {
         return
     fi
 
-    tmp_extension=".balance"
+    tmp_extension=".ZIR"
     tmp_file_path="${main_file}${tmp_extension}"
 
     echo "Copying '${main_file}' to '${tmp_file_path}'..."
