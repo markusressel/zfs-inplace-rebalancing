@@ -95,9 +95,14 @@ function process_inode_group() {
     fi
 
     main_file="${paths[0]}"
-
+    echo_debug "--${main_file}"
+    main_file="${main_file%\\n}"
+    echo_debug "---${main_file}"
+    
     # Check if main_file exists
-    if [[ ! -f "${main_file}" ]]; then
+    if [ -f "${main_file}" ]; then
+        echo_debug "Found: ${main_file}"
+    else
         color_echo "${Yellow}" "File is missing, skipping: ${main_file}"
         return
     fi
@@ -115,7 +120,7 @@ function process_inode_group() {
         # -a -- keep attributes, includes -d -- keep symlinks (dont copy target) and
         #       -p -- preserve ACLs to
         # -x -- stay on one system
-        cmd=(cp --reflink=never -ax "${main_file}" "${tmp_file_path}")
+        cmd=(cp -ax "${main_file}" "${tmp_file_path}")
         echo_debug "${cmd[@]}"
         "${cmd[@]}"
     elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
@@ -190,7 +195,7 @@ function process_inode_group() {
     echo "Removing original files..."
     for path in "${paths[@]}"; do
         echo_debug "Removing $path"
-        rm "${path}"
+        rm "${path%\\n}"
     done
 
     echo "Renaming temporary copy to original '${main_file}'..."
@@ -279,7 +284,7 @@ color_echo "$Cyan" "  Debug Mode: ${debug_flag}"
 # Generate files_list.txt with device and inode numbers using stat, separated by a pipe '|'
 if [[ "${OSName}" == "linux-gnu"* ]]; then
     # Linux
-    find "$root_path" -type f -not -path '*/.zfs/*' -exec stat --printf '%d:%i|%n\n' {} \; > files_list.txt
+    find "$root_path" -type f -not -path '*/.zfs/*' -exec stat -c '%d:%i|%n\n' {} \; > files_list.txt
 elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
     # Mac OS and FreeBSD
     find "$root_path" -type f -not -path '*/.zfs/*' -exec stat -f "%d:%i|%N" {} \; > files_list.txt
