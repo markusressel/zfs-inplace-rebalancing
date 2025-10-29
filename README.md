@@ -1,6 +1,12 @@
 # zfs-inplace-rebalancing
 Simple bash script to rebalance pool data between all mirrors when adding vdevs to a pool.
 
+> [!IMPORTANT]
+> ZFS 2.3.3 introduced the `zfs rewrite` command, which is meant to address this very issue as well, but avoids most of the caveats the script in this repository has. Definitely check it out first before trying to make this script work for you.
+>
+> PR: https://github.com/openzfs/zfs/pull/17246  
+> Docs: https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html
+
 [![asciicast](https://asciinema.org/a/350222.svg)](https://asciinema.org/a/350222)
 
 ## How it works
@@ -93,7 +99,8 @@ Dependencies:
 
 ## Usage
 
-**ALWAYS HAVE A BACKUP OF YOUR DATA!**
+> [!CAUTION]
+> **ALWAYS HAVE A BACKUP OF YOUR DATA!**
 
 You can print a help message by running the script without any parameters:
 
