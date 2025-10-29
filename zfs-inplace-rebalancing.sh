@@ -26,7 +26,7 @@ Cyan='\033[0;36m'   # Cyan
 
 # Print a help message
 function print_usage() {
-    echo "Usage: zfs-inplace-rebalancing.sh --checksum true --passes 1 --debug false /my/pool"
+    echo "Usage: zfs-inplace-rebalancing.sh --checksum true --passes 1 --debug false --test false /my/pool"
 }
 
 # Print a given text entirely in a given color
@@ -95,9 +95,13 @@ function process_inode_group() {
     fi
 
     main_file="${paths[0]}"
-
+    #strip \n off the end on QNAP
+    main_file="${main_file%\\n}"
+    
     # Check if main_file exists
-    if [[ ! -f "${main_file}" ]]; then
+    if [ -f "${main_file}" ]; then
+        echo_debug "Found: ${main_file}"
+    else
         color_echo "${Yellow}" "File is missing, skipping: ${main_file}"
         return
     fi
@@ -115,9 +119,14 @@ function process_inode_group() {
         # -a -- keep attributes, includes -d -- keep symlinks (dont copy target) and
         #       -p -- preserve ACLs to
         # -x -- stay on one system
-        cmd=(cp --reflink=never -ax "${main_file}" "${tmp_file_path}")
+        cmd=(cp -ax "${main_file}" "${tmp_file_path}")
         echo_debug "${cmd[@]}"
-        "${cmd[@]}"
+
+        if [ "$test_flag" != true ]; then
+           "${cmd[@]}"
+        else
+           color_echo "${Yellow}" "Test Mode, Skipping Copy"
+        fi
     elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
         # Mac OS and FreeBSD
 
@@ -127,7 +136,11 @@ function process_inode_group() {
         # -x -- File system mount points are not traversed.
         cmd=(cp -ax "${main_file}" "${tmp_file_path}")
         echo_debug "${cmd[@]}"
-        "${cmd[@]}"
+        if [ "${test_flag}" != true ]; then
+           color_echo "${Yellow}" "Test Mode, Skipping Copy"
+        else
+           "${cmd[@]}"
+        fi
     else
         echo "Unsupported OS type: $OSTYPE"
         exit 1
@@ -148,22 +161,32 @@ function process_inode_group() {
 
 
             # file attributes
-            copy_perms=$(lsattr "${tmp_file_path}")
-            # remove anything after the last space
-            copy_perms=${copy_perms% *}
-            # file permissions, owner, group, size, modification time
-            copy_perms="${copy_perms} $(stat -c "%A %U %G %s %Y" "${tmp_file_path}")"
+            if [ "${test_flag}" != true ]; then
+              copy_perms=$(lsattr "${tmp_file_path}")
+              # remove anything after the last space
+              copy_perms=${copy_perms% *}
+              # file permissions, owner, group, size, modification time
+              copy_perms="${copy_perms} $(stat -c "%A %U %G %s %Y" "${tmp_file_path}")"
+            else
+              copy_perms=$original_perms 
+            fi
+            
+            
         elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
             # Mac OS
             # FreeBSD
-
+            
             # note: no lsattr on Mac OS or FreeBSD
-
+            
             # file permissions, owner, group size, modification time
             original_perms="$(stat -f "%Sp %Su %Sg %z %m" "${main_file}")"
 
-            # file permissions, owner, group size, modification time
-            copy_perms="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
+            if [ "${test_flag}" != true ]; then
+               # file permissions, owner, group size, modification time
+               copy_perms="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
+            else
+               copy_perms=$original_perms
+            fi
         else
             echo "Unsupported OS type: $OSTYPE"
             exit 1
@@ -179,30 +202,40 @@ function process_inode_group() {
             exit 1
         fi
 
-        if cmp -s "${main_file}" "${tmp_file_path}"; then
-            color_echo "${Green}" "File content check OK"
+        if [ "${test_flag}" != true ]; then
+           if cmp -s "${main_file}" "${tmp_file_path}"; then
+               color_echo "${Green}" "File content check OK"
+           else
+               color_echo "${Red}" "File content check FAILED"
+               exit 1
+           fi
         else
-            color_echo "${Red}" "File content check FAILED"
-            exit 1
+           color_echo "${Green}" "File content check OK"
         fi
     fi
 
     echo "Removing original files..."
     for path in "${paths[@]}"; do
         echo_debug "Removing $path"
-        rm "${path}"
+        if [ "${test_flag}" != true ]; then
+           rm "${path%\\n}"
+        fi
     done
 
     echo "Renaming temporary copy to original '${main_file}'..."
     echo_debug "Moving ${tmp_file_path} to ${main_file}"
-    mv "${tmp_file_path}" "${main_file}"
+    if [ "${test_flag}" != true ]; then
+       mv "${tmp_file_path}" "${main_file}"
+    fi
 
     # Only recreate hardlinks if there are multiple paths
     if [ "${num_paths}" -gt 1 ]; then
         echo "Recreating hardlinks..."
         for (( i=1; i<${#paths[@]}; i++ )); do
             echo_debug "Linking ${main_file} to ${paths[$i]}"
-            ln "${main_file}" "${paths[$i]}"
+            if [ "${test_flag}" != true ]; then
+               ln "${main_file}" "${paths[$i]}"
+            fi
         done
     fi
 
@@ -228,13 +261,16 @@ function process_inode_group() {
 checksum_flag='true'
 passes_flag='1'
 debug_flag='false'
+test_flag='true'
+
+POSITIONAL_ARGS=()
 
 if [[ "$#" -eq 0 ]]; then
     print_usage
     exit 0
 fi
 
-while true; do
+while [[ $# -gt 0 ]]; do
     case "$1" in
     -h | --help)
         print_usage
@@ -253,67 +289,98 @@ while true; do
         shift 2
         ;;
     --debug)
-        if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
-            debug_flag="true"
-        else
+        if [[ "$2" == 1 || "$2" =~ (off|false|no) ]]; then
             debug_flag="false"
+        else
+            debug_flag="true"
+        fi
+        shift 2
+        ;;
+    --test)
+        if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
+            test_flag="true"
+        else
+            test_flag="false"
         fi
         shift 2
         ;;
     *)
-        break
+        POSITIONAL_ARGS+=("$1") # save positional arg
+        shift # past argument
         ;;
     esac
 done
 
-root_path=$1
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
 
 OSName=$(echo "$OSTYPE" | tr '[:upper:]' '[:lower:]')
 
 color_echo "$Cyan" "Start rebalancing $(date):"
-color_echo "$Cyan" "  Path: ${root_path}"
+#color_echo "$Cyan" "  Path: ${root_path}"
 color_echo "$Cyan" "  Rebalancing Passes: ${passes_flag}"
 color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
 color_echo "$Cyan" "  Debug Mode: ${debug_flag}"
+color_echo "$Cyan" "  Test Mode: ${test_flag}"
+echo "\n"
+
+#Parse all of the paths given
 
 # Generate files_list.txt with device and inode numbers using stat, separated by a pipe '|'
-if [[ "${OSName}" == "linux-gnu"* ]]; then
+if [[ "${OSName}" == "linux-gnu"* ]] || [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
     # Linux
-    find "$root_path" -type f -not -path '*/.zfs/*' -exec stat --printf '%d:%i|%n\n' {} \; > files_list.txt
-elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
-    # Mac OS and FreeBSD
-    find "$root_path" -type f -not -path '*/.zfs/*' -exec stat -f "%d:%i|%N" {} \; > files_list.txt
+    rm -f files_list.txt
+    for i in "$@"; do
+       root_path=${i}
+       color_echo "$Cyan" " Path: ${root_path}"
+       echo "\n"
+       find "$root_path" -type f -not -path '*/.zfs/*' -exec stat -c '%s|%d:%i|%n\n' {} \; >> files_list.txt
+       shift # past argument
+    done
 else
     echo "Unsupported OS type: $OSTYPE"
     exit 1
 fi
+
 
 echo_debug "Contents of files_list.txt:"
 if [ "$debug_flag" = true ]; then
     cat files_list.txt
 fi
 
-# Sort files_list.txt by device and inode number
-sort -t '|' -k1,1 files_list.txt > sorted_files_list.txt
+# Sort files_list.txt by size, then device/inode
+sort -n -k1,2 -t '|' -r files_list.txt > sorted_files_list.txt
 
 echo_debug "Contents of sorted_files_list.txt:"
 if [ "$debug_flag" = true ]; then
     cat sorted_files_list.txt
 fi
 
+
 # Use awk to group paths by inode key and handle spaces in paths
 awk -F'|' '{
-    key = $1
-    path = substr($0, length(key)+2)
-    if (key == prev_key) {
-        print "\t" path
+    keyA = $1
+    keyB = $2
+    path = substr($0, length(keyB) + length(keyA)+3)
+    if (keyA == prev_keyA) {
+        if (keyB == prev_keyB) {
+           print "\t" path
+        }
+        else {
+          if (NR > 1) {
+              #Do nothing
+          }
+          print keyB
+          print "\t" path
+          prev_keyB = keyB
+        }
     } else {
         if (NR > 1) {
             # Do nothing
         }
-        print key
+        print keyB
         print "\t" path
-        prev_key = key
+        prev_keyA = keyA
     }
 }' sorted_files_list.txt > grouped_inodes.txt
 
@@ -359,7 +426,7 @@ if [[ "${#paths[@]}" -gt 0 ]]; then
 fi
 
 # Clean up temporary files
-rm files_list.txt sorted_files_list.txt grouped_inodes.txt
+#rm files_list.txt sorted_files_list.txt grouped_inodes.txt
 
 echo ""
 echo ""
