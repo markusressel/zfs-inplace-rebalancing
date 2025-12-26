@@ -76,6 +76,8 @@ and have a look at difference of the `CAP` value (`SIZE`/`FREE` vs `ALLOC` ratio
 
 Due to the working principle of this script, which essentially creates a duplicate file on purpose, deduplication will most definitely prevent it from working as intended. If you use deduplication you probably have to resort to a more expensive rebalancing method that involves additional drives.
 
+If you want your duplicated Data to be rabalanced you have to change the recordsize of the pool. Since duplication works on block level, every file write resulting in another block layout is rebalanced. For Example a 1MB file is split in 8 blocks at 128K recordsize. If you change the recordsize to 256K it results in 4 blocks which are not he same and thus will be rewritten/rebalanced. If the file was smaller than 128K it will not be rebalanced since the resulting block is the same at byte-level and thus will be deduplicated.
+
 ### Data selection (cold data)
 
 Due to the working principle of this script, it is crucial that you **only run it on data that is not actively accessed**, since the original file will be deleted.
