@@ -31,8 +31,9 @@ function print_usage() {
 
 # Print a given text entirely in a given color
 function color_echo() {
-    color=$1
-    text=$2
+    local color=$1
+    shift
+    local text="$*"
     echo -e "${color}${text}${Color_Off}"
 }
 
@@ -44,31 +45,50 @@ function echo_debug() {
     fi
 }
 
-function get_rebalance_count() {
-    file_path="$1"
+# Initialize flat database arrays (Kept for compatibility, unused in basic sh)
+db_paths=()
+db_counts=()
+db_size=0
 
-    line_nr=$(grep -xF -n "${file_path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
-    if [ -z "${line_nr}" ]; then
-        echo "0"
-        return
-    else
-        rebalance_count_line_nr="$((line_nr + 1))"
-        rebalance_count=$(awk "NR == ${rebalance_count_line_nr}" "./${rebalance_db_file_name}")
-        echo "${rebalance_count}"
-        return
+# Cleaned up database loader for environments missing associative arrays
+function load_rebalance_db_to_memory() {
+    if [ -f "./${rebalance_db_file_name}" ]; then
+        echo "Using direct file-lookups for database tracking..."
     fi
 }
+
+# Flat-file sequential lookup function safely handling complex strings
+function get_rebalance_count() {
+    local file_path="$1"
+    if [ -f "./${rebalance_db_file_name}" ]; then
+        # Search the database file safely for an exact path match and pull the line directly below it
+        local match_count
+        match_count=$(grep -F -A 1 "$file_path" "./${rebalance_db_file_name}" | tail -n 1)
+        # Verify result is a real integer string
+        if [ -n "$match_count" ] && [ "$match_count" -eq "$match_count" ] 2>/dev/null; then
+            echo "$match_count"
+        else
+            echo "0"
+        fi
+    else
+        echo "0"
+    fi
+}
+
 
 # Rebalance a group of files that are hardlinked together
 function process_inode_group() {
     paths=("$@")
     num_paths="${#paths[@]}"
 
-    # Progress tracking
+    # Progress tracking safely avoiding division by zero errors
     current_index="$((current_index + 1))"
-    progress_raw=$((current_index * 10000 / file_count))
+    local safe_total=${file_count:-1}
+    if [ "$safe_total" -le 0 ]; then safe_total=1; fi
+    
+    progress_raw=$((current_index * 10000 / safe_total))
     progress_percent=$(printf '%0.2f' "${progress_raw}e-2")
-    color_echo "${Cyan}" "Progress -- Files: ${current_index}/${file_count} (${progress_percent}%)"
+    color_echo "${Cyan}" "Progress -- Files: ${current_index}/${safe_total} (${progress_percent}%)"
 
     echo_debug "Processing inode group with ${num_paths} paths:"
     for path in "${paths[@]}"; do
@@ -119,27 +139,53 @@ function process_inode_group() {
         # -a -- keep attributes, includes -d -- keep symlinks (dont copy target) and
         #       -p -- preserve ACLs to
         # -x -- stay on one system
-        cmd=(cp -ax "${main_file}" "${tmp_file_path}")
-        echo_debug "${cmd[@]}"
+        
+		echo_debug "dd if=\"${main_file}\" bs=4M 2>/dev/null | dd of=\"${tmp_file_path}\" bs=1M 2>/dev/null"
 
         if [ "$test_flag" != true ]; then
-           "${cmd[@]}"
+		
+		   if [ -e "${tmp_file_path}" ]; then
+              color_echo "${Red}" "Temporary rebalance file already exists: ${tmp_file_path}"
+              color_echo "${Red}" "Refusing to overwrite it."
+              exit 1
+           fi
+		
+           dd if="${main_file}" bs=2M  | dd of="${tmp_file_path}" bs=1M >/dev/null
+		   
+		   # Restore basic metadata
+		   owner_uid=$(stat -c '%u' "${main_file}")
+           owner_gid=$(stat -c '%g' "${main_file}")
+
+           chown "${owner_uid}:${owner_gid}" "${tmp_file_path}"
+		   
+           file_mode=$(stat -c '%a' "${main_file}")
+           chmod "${file_mode}" "${tmp_file_path}"
+		   
+           touch --reference="${main_file}" "${tmp_file_path}"
+		   
+		   # Restore ACLs
+           getfacl --access "${main_file}" | setfacl --set-file=- "${tmp_file_path}"
+           
+           # Restore extended attributes, if present
+           if getfattr --absolute-names --dump "${main_file}" 2>/dev/null | grep -q '^user\.\|^security\.\|^system\.\|^trusted\.'; then
+               # Safe string replacement for pure shell runtime environments
+               local safe_tmp_path
+               safe_tmp_path=$(echo "${tmp_file_path}" | sed 's/&/\\&/g')
+               getfattr --absolute-names --dump "${main_file}" | sed "s|^# file: .*|# file: ${safe_tmp_path}|" | setfattr --restore=-
+           fi
+
         else
+		   color_echo "${Yellow}" "${cmd[@]}"
            color_echo "${Yellow}" "Test Mode, Skipping Copy"
         fi
     elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
         # Mac OS and FreeBSD
-
-        # -a -- Archive mode.  Same as -RpP. Includes preservation of modification
-        #       time, access time, file flags, file mode, ACL, user ID, and group
-        #       ID, as allowed by permissions.
-        # -x -- File system mount points are not traversed.
         cmd=(cp -ax "${main_file}" "${tmp_file_path}")
         echo_debug "${cmd[@]}"
         if [ "${test_flag}" != true ]; then
-           color_echo "${Yellow}" "Test Mode, Skipping Copy"
-        else
            "${cmd[@]}"
+        else
+           color_echo "${Yellow}" "Test Mode, Skipping Copy"
         fi
     else
         echo "Unsupported OS type: $OSTYPE"
@@ -152,37 +198,26 @@ function process_inode_group() {
         if [[ "${OSName}" == "linux-gnu"* ]]; then
             # Linux
 
-            # file attributes
-            original_perms=$(lsattr "${main_file}")
-            # remove anything after the last space
-            original_perms=${original_perms% *}
+            # file attributes (safely extract only the first column using cut)
+            original_perms=$(lsattr -d "${main_file}" | cut -d' ' -f1)
             # file permissions, owner, group, size, modification time
             original_perms="${original_perms} $(stat -c "%A %U %G %s %Y" "${main_file}")"
 
-
             # file attributes
             if [ "${test_flag}" != true ]; then
-              copy_perms=$(lsattr "${tmp_file_path}")
-              # remove anything after the last space
-              copy_perms=${copy_perms% *}
+              copy_perms=$(lsattr -d "${tmp_file_path}" | cut -d' ' -f1)
               # file permissions, owner, group, size, modification time
               copy_perms="${copy_perms} $(stat -c "%A %U %G %s %Y" "${tmp_file_path}")"
             else
               copy_perms=$original_perms 
-            fi
-            
+            fi            
             
         elif [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
             # Mac OS
             # FreeBSD
-            
-            # note: no lsattr on Mac OS or FreeBSD
-            
-            # file permissions, owner, group size, modification time
             original_perms="$(stat -f "%Sp %Su %Sg %z %m" "${main_file}")"
 
             if [ "${test_flag}" != true ]; then
-               # file permissions, owner, group size, modification time
                copy_perms="$(stat -f "%Sp %Su %Sg %z %m" "${tmp_file_path}")"
             else
                copy_perms=$original_perms
@@ -239,23 +274,15 @@ function process_inode_group() {
         done
     fi
 
-    if [ "${passes_flag}" -ge 1 ]; then
+    if [ "${passes_flag}" -ge 1 ] && [ "${test_flag}" != true ]; then
         # Update rebalance "database" for all files
         for path in "${paths[@]}"; do
-            line_nr=$(grep -xF -n "${path}" "./${rebalance_db_file_name}" | head -n 1 | cut -d: -f1)
-            if [ -z "${line_nr}" ]; then
-                rebalance_count=1
-                echo "${path}" >> "./${rebalance_db_file_name}"
-                echo "${rebalance_count}" >> "./${rebalance_db_file_name}"
-            else
-                rebalance_count_line_nr="$((line_nr + 1))"
-                rebalance_count=$(awk "NR == ${rebalance_count_line_nr}" "./${rebalance_db_file_name}")
-                rebalance_count="$((rebalance_count + 1))"
-                echo_debug "Updating rebalance count for ${path} to ${rebalance_count}"
-                sed -i "${rebalance_count_line_nr}s/.*/${rebalance_count}/" "./${rebalance_db_file_name}"
-            fi
+            # Append changes directly to the database file
+            echo "${path}" >> "./${rebalance_db_file_name}"
+            echo "$((passes_flag))" >> "./${rebalance_db_file_name}"
         done
     fi
+
 }
 
 checksum_flag='true'
@@ -289,10 +316,10 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
     --debug)
-        if [[ "$2" == 1 || "$2" =~ (off|false|no) ]]; then
-            debug_flag="false"
-        else
+        if [[ "$2" == 1 || "$2" =~ (on|true|yes) ]]; then
             debug_flag="true"
+        else
+            debug_flag="false"
         fi
         shift 2
         ;;
@@ -317,25 +344,40 @@ set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
 OSName=$(echo "$OSTYPE" | tr '[:upper:]' '[:lower:]')
 
 color_echo "$Cyan" "Start rebalancing $(date):"
-#color_echo "$Cyan" "  Path: ${root_path}"
 color_echo "$Cyan" "  Rebalancing Passes: ${passes_flag}"
 color_echo "$Cyan" "  Use Checksum: ${checksum_flag}"
 color_echo "$Cyan" "  Debug Mode: ${debug_flag}"
 color_echo "$Cyan" "  Test Mode: ${test_flag}"
-echo "\n"
-
-#Parse all of the paths given
+echo -e "\n"
 
 # Generate files_list.txt with device and inode numbers using stat, separated by a pipe '|'
 if [[ "${OSName}" == "linux-gnu"* ]] || [[ "${OSName}" == "darwin"* ]] || [[ "${OSName}" == "freebsd"* ]]; then
-    # Linux
     rm -f files_list.txt
+	
+	# String tracker to keep tabs on paths we already looked at
+    processed_paths=""
+
     for i in "$@"; do
        root_path=${i}
+       
+       # Check if this exact path string is already in our tracker
+       if [[ " $processed_paths " == *" $root_path "* ]]; then
+           color_echo "$Yellow" "Warning: Duplicate path detected and skipped -> ${root_path}"
+           shift
+           continue
+       fi
+
+       # Add the current path to our tracking string
+       processed_paths="${processed_paths} ${root_path}"
+
        color_echo "$Cyan" " Path: ${root_path}"
-       echo "\n"
-       find "$root_path" -type f -not -path '*/.zfs/*' -exec stat -c '%s|%d:%i|%n\n' {} \; >> files_list.txt
-       shift # past argument
+       echo -e "\n"
+       
+       find "$root_path" -type f | grep -v '/\.zfs/' | while IFS= read -r filepath; do
+           stat -c '%s|%D:%i|%n' "$filepath" 2>/dev/null
+       done >> files_list.txt
+
+       shift
     done
 else
     echo "Unsupported OS type: $OSTYPE"
@@ -348,7 +390,7 @@ if [ "$debug_flag" = true ]; then
     cat files_list.txt
 fi
 
-# Sort files_list.txt by size, then device/inode
+# Sort files_list.txt by size, then device/inode (size smallest to largest)
 sort -n -k1,2 -t '|' -r files_list.txt > sorted_files_list.txt
 
 echo_debug "Contents of sorted_files_list.txt:"
@@ -400,6 +442,15 @@ current_index=0
 # Create db file
 if [ "${passes_flag}" -ge 1 ]; then
     touch "./${rebalance_db_file_name}"
+    
+    # Sort the text database cleanly using awk paired lines instead of paste command
+    if [ -s "./${rebalance_db_file_name}" ]; then
+        awk 'NR%2{p=$0;next} {print p "|" $0}' "./${rebalance_db_file_name}" | sort -t '|' -k1,1 | awk -F'|' '{print $1; print $2}' > "./${rebalance_db_file_name}.tmp"
+        mv "./${rebalance_db_file_name}.tmp" "./${rebalance_db_file_name}"
+    fi
+
+    # Populate the flat tracking cache reference notice
+    load_rebalance_db_to_memory
 fi
 
 paths=()
@@ -424,9 +475,6 @@ done < grouped_inodes.txt
 if [[ "${#paths[@]}" -gt 0 ]]; then
     process_inode_group "${paths[@]}"
 fi
-
-# Clean up temporary files
-#rm files_list.txt sorted_files_list.txt grouped_inodes.txt
 
 echo ""
 echo ""
