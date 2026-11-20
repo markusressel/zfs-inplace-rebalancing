@@ -2,7 +2,9 @@
 Simple bash script to rebalance pool data between all mirrors when adding vdevs to a pool.
 
 > [!IMPORTANT]
-> ZFS 2.3.3 introduced the `zfs rewrite` command, which is meant to address this very issue as well, but avoids most of the caveats the script in this repository has. Definitely check it out first before trying to make this script work for you.
+> This project is no longer actively developed. ZFS 2.3.3 introduced the `zfs rewrite` command, which rebalances data without copying files. It avoids most caveats of this script: permissions, ACLs, timestamps and hardlinks stay as they are, and filename length doesn't matter. Use it if your ZFS version has it.
+>
+> The script stays available as is, e.g. for older ZFS versions, or to apply a changed `recordsize` to existing data (`zfs rewrite` keeps the block size). Issues won't be worked on, and PRs that change the script won't be merged.
 >
 > PR: https://github.com/openzfs/zfs/pull/17246  
 > Docs: https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html
@@ -75,6 +77,8 @@ and have a look at difference of the `CAP` value (`SIZE`/`FREE` vs `ALLOC` ratio
 ### No Deduplication
 
 Due to the working principle of this script, which essentially creates a duplicate file on purpose, deduplication will most definitely prevent it from working as intended. If you use deduplication you probably have to resort to a more expensive rebalancing method that involves additional drives.
+
+To rebalance deduplicated data, change the `recordsize` of the dataset before running the script. The copy is then written with a different block layout, so its blocks don't match the existing ones and are written anew. Files that fit into a single block at both sizes keep the same block and stay deduplicated.
 
 ### Data selection (cold data)
 
