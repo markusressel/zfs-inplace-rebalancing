@@ -13,7 +13,7 @@ Simple bash script to rebalance pool data between all mirrors when adding vdevs 
 
 ## How it works
 
-This script recursively traverses all the files in a given directory. Each file is copied with a `.balance` suffix, retaining all file attributes. The original is then deleted and the *copy* is renamed back to the name of the original file. When copying a file ZFS will spread the data blocks across all vdevs, effectively distributing/rebalancing the data of the original file (more or less) evenly. This allows the pool data to be rebalanced without the need for a separate backup pool/drive.
+This script recursively traverses all the files in a given directory. Each file is copied with a `.balance` suffix, retaining all file attributes. The only exception is the birth time (creation time) of a file: Linux has no way to set it, so the copy gets the time it was created by the script. The original is then deleted and the *copy* is renamed back to the name of the original file. When copying a file ZFS will spread the data blocks across all vdevs, effectively distributing/rebalancing the data of the original file (more or less) evenly. This allows the pool data to be rebalanced without the need for a separate backup pool/drive.
 
 When the script detects an inode group of hardlinked files, it will proceed to copy one file in the inode group. The original file and all hardlinks are then deleted, the *copy* is renamed back to the name of the original file, and new hardlinks are generated from that copy to replace all other linked files that were removed.
 
